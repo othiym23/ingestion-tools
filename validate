@@ -1,0 +1,19 @@
+#!/usr/bin/env ruby
+
+require 'find'
+require File.join(File.dirname(__FILE__), 'lib/path_utils')
+
+total_files = 0
+invalid_files = 0
+
+Find.find('.') do |entry|
+  if File.file?(entry)
+    total_files = total_files.next
+    unless PathUtils.valid_mp3_path?(entry) 
+      invalid_files = invalid_files.next 
+      puts entry
+    end
+  end
+end
+
+puts "#{invalid_files} out of #{total_files} are invalid."

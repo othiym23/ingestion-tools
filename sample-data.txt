@@ -1,0 +1,54 @@
+# simple cut and paste job for irb to interactively examine MP3 files
+$:.unshift('/home/ogd/tmp/ruby/mp3info/lib')
+require 'mp3info'
+require 'find'
+def dump_mp3(path)
+  Mp3Info.open(path) { |info| puts info }
+end
+def find_artist(artist_path)
+  Find.find(artist_path) do |entry|
+    if File.file?(entry) && '.mp3' == File.extname(entry)
+      dump_mp3(entry)
+    end
+  end
+end
+
+MPEG 1 Layer 3 VBR 141 Kbps JStereo 44100 Hz length 487.942 sec. error protection false tag2: {
+  "TPOS"=>"1/1", 
+  "TSOP"=>"Kiss The Anus Of A Black Cat", 
+  "COMM"=>"eng", 
+  "TDTG"=>"2005-11-06T03:18:35", 
+  "TCON"=>"Folk", 
+  "TALB"=>"If The Sky Falls, We Shall Catch The Larks.", 
+  "TXXX"=>"#Helium Comment\000Track 2", 
+  "TSOT"=>"Nihil, As In Nihilism", 
+  "TSOA"=>"If The Sky Falls, We Shall Catch The Larks.", 
+  "TENC"=>"Exact Audio Copy (Secure Mode) / lame 3.96.1 --alt-preset standard / Helium Music Manager 2005", 
+  "TRCK"=>"2/4",
+  "TYER"=>"2005", 
+  "TPE1"=>"Kiss The Anus Of A Black Cat", 
+  "TIT2"=>"Nihil, As In Nihilism" }
+
+MPEG 1 Layer 3 VBR 168 Kbps JStereo 44100 Hz length 315.588 sec. error protection false tag2: {
+  "TPOS"=>"1/1",
+  "TSOP"=>"Jonathan Bepler",
+  "COMM"=>"eng",
+  "TDRC"=>"1999",
+  "TDTG"=>"2005-08-21T03:45:04",
+  "TCON"=>"Soundtrack",
+  "TALB"=>"Cremaster 2",
+  "TSOT"=>"Man In Black, The",
+  "TXXX"=>[
+    "MusicBrainz TRM Id\00069eb1530-388b-4ef7-8fb3-0f4951fe8555",
+    "MusicBrainz Artist Id\000875c6141-97e8-49f7-8ff1-5e02382b088d",
+    "MusicBrainz Album Id\0003a5fd4dd-04bc-4d87-9f59-dbae01b7e5bf",
+    "MusicBrainz Album Type\000soundtrack",
+    "MusicBrainz Album Status\000official",
+    "#Helium Comment\000Track 3"],
+  "UFID"=>"http://musicbrainz.org\000d4e0f6f4-b368-4531-8f55-75dee5b08716",
+  "TSOA"=>"Cremaster 2",
+  "XSOP"=>"Bepler, Johnathan",
+  "TENC"=>"Exact Audio Copy (Secure Mode) / lame 3.96.1 --alt-preset standard / Helium Music Manager 2005",
+  "TRCK"=>"3/10",
+  "TPE1"=>"Jonathan Bepler\000",
+  "TIT2"=>"The Man In Black" }
