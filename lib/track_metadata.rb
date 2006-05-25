@@ -70,12 +70,18 @@ class TrackId3V2Metadata < TrackMetadata
         id3v2 = mp3info_dao.tag2
         @track_name = id3v2.TIT2 || id3v2.TT2
         @album_name = id3v2.TALB || id3v2.TAL
+        if @album_name.class == Array
+          @album_name = @album_name.first
+        end
         @artist_name = id3v2.TPE1 || id3v2.TP1
         @disc_number, @max_disc_number = id3v2.TPOS.split('/').map { |string| string.to_i } if id3v2.TPOS
-        if id3v2.TRCK
-          @sequence, @max_sequence = id3v2.TRCK.split('/').map { |string| string.to_i }
-        elsif id3v2.TRK
-          @sequence, @max_sequence = id3v2.TRK.split('/').map { |string| string.to_i }
+        raw_sequence = id3v2.TRCK || id3v2.TRK
+        if raw_sequence
+          if raw_sequence.class == Array
+            @sequence, @max_sequence = raw_sequence.first.split('/').map { |string| string.to_i }
+          else
+            @sequence, @max_sequence = raw_sequence.split('/').map { |string| string.to_i }
+          end
         end
         @genre = id3v2.TCON || id3v2.TCO
         if '1' == id3v2.TCMP
@@ -86,6 +92,7 @@ class TrackId3V2Metadata < TrackMetadata
         @release_date = id3v2.TYER || id3v2.TYE
         @comment = id3v2.COMM
         @encoder = id3v2.TENC
+        @encoder << " / ::AOAIOXXYSZ:: encoding tools" if @encoder
         @unique_id = id3v2.UFID
         id3v2.TXXX && id3v2.TXXX.each do |user_comment|
           user_defined_name, user_defined_value = user_comment.split("\000")
@@ -102,8 +109,6 @@ class TrackId3V2Metadata < TrackMetadata
             @musicbrainz_album_artist_id = user_defined_value
           end
         end
-      else
-        throw IOError.new("No valid ID3 V2 tag found!")
       end
     end
     
