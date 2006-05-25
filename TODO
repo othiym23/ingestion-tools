@@ -1,0 +1,15 @@
+# display and correct album metadata
+# flag and correct unmarked compilations
+# fetch Musicbrainz annotations from server
+# flag and remove ID3v1 tag
+# safely save changed tags to disk
+# safely move corrected files into place with correct name
+# safely remove empty directories
+# prompt to compare two albums
+# prompt to replace and / or remove one of the two albums
+# parse out featured artists ((feat. x), Feat. x, f. x, etc)
+# parse out remixes (/(.+)\[(.**)\]/)
+# canonicalize track, artist and album capitalization
+# canonicalize track filename and rename to canonicalized standard
+# match artists against archive and database
+# load list of genres from database and canonicalize if not direct match

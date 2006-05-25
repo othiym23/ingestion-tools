@@ -1,9 +1,0 @@
-#!/usr/bin/env ruby
-
-# TODO: grab directory to process from command line
-# TODO: collect tracks
-# TODO: display and correct album metadata
-# TODO: fetch Musicbrainz annotations from server
-# TODO: flag and allow removal of ID3v1 tag
-# TODO: correct tags
-# TODO: safely move corrected files into place with correct name

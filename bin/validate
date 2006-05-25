@@ -1,7 +1,9 @@
 #!/usr/bin/env ruby
 
+$:.unshift(File.join(File.dirname(__FILE__), '../lib'))
+
 require 'find'
-require File.join(File.dirname(__FILE__), 'lib/path_utils')
+require 'path_utils'
 
 total_files = 0
 invalid_files = 0

@@ -1,0 +1,46 @@
+#!/usr/bin/env ruby
+
+$:.unshift(File.join(File.dirname(__FILE__), '../lib'))
+
+require 'path_utils'
+require 'album'
+
+ARCHIVE_BASE = '/data/music/mp3'
+
+source_directory = File.expand_path(ARGV[0])
+raise IOError.new("Path #{source_directory} does not exist!") unless File.exists?(source_directory)
+
+unless PathUtils.album_ingested?(ARCHIVE_BASE, source_directory)
+  source_images = Dir.glob("#{source_directory + File::SEPARATOR}*.{jpg,jpeg,gif,png}")
+  source_audio = Dir.glob("#{source_directory + File::SEPARATOR}**#{File::SEPARATOR}*.mp3")
+  
+  albums = Album.from_paths(source_audio)
+  albums.each do |album|
+    puts "#{album.artist_name}: #{album.name} (#{album.genre})"
+    puts
+    
+    album.discs.compact.each do |disc|
+      puts "  Disc #{disc.number}:"
+      disc.tracks.sort { |first,second| first.sequence <=> second.sequence }.each do |track|
+        out = "    #{disc.number}.#{track.sequence}: "
+        out << "#{track.artist_name} - " if track.artist_name != album.artist_name
+        out << "#{track.name}"
+        puts out
+      end
+    end
+    puts; puts
+  end
+
+  # TODO: display album metadata
+  # TODO: correct album metadata
+  # TODO: flag and correct unmarked compilations
+  # TODO: fetch Musicbrainz annotations from server
+  # TODO: flag and remove ID3v1 tag
+  # TODO: safely save changed tags to disk
+  # TODO: safely move corrected files into place with correct name
+  # TODO: safely remove empty directories
+else
+  puts "This album already exists in the archive."
+  # TODO prompt to compare two albums
+  # TODO prompt to replace and / or remove one of the two albums
+end
