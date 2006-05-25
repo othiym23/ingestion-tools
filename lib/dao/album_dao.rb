@@ -15,22 +15,22 @@ class AlbumDao
       album_name = track.album_name
       if albums[album_name].nil?
         new_album = Album.new
-        new_album.name = track.album_name
+        new_album.name = album_name
         albums[album_name] = new_album
       end
       album = albums[album_name]
       
-      disc_number = track.disc_number
+      disc_number = track_dao.disc_number
       if album.discs[disc_number].nil?
         new_disc = Disc.new
-        new_disc.number = track.disc_number
+        new_disc.number = disc_number
         album.discs[disc_number] = new_disc
+        new_disc.album = album
       end
       disc = album.discs[disc_number]
+      track.disc = disc
 
       disc.tracks << track
-
-      albums[album_name].number_of_discs = albums[album_name].discs.nitems
     end
 
     albums.each do |album_name,album|

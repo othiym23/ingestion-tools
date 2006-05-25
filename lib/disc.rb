@@ -1,11 +1,11 @@
 class Disc
-  attr_accessor :number, :tracks, :number_of_tracks
+  attr_accessor :album, :number, :tracks, :number_of_tracks
   
   def initialize
     @tracks = []
   end
   
-  def number_of_tracks
-    @number_of_tracks = @tracks.nitems
+  def number_of_tracks_loaded
+    @tracks.nitems
   end
 end

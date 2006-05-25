@@ -27,22 +27,29 @@ class TrackDao
       @filename.artist_name ||
       @path.artist_name
 
-    track.disc_number =
-      (@path.disc_number ||
-       @id3v2.disc_number ||
-       1).to_i
-    track.max_disc_number =
-      (@id3v2.max_disc_number ||
-       1).to_i
     track.sequence =
       (@id3v2.sequence || 
        @filename.sequence).to_i
-    track.max_sequence = @id3v2.max_sequence.to_i
 
     track.genre = @id3v2.genre
     track.comment = @id3v2.comment
     track.encoder = @id3v2.encoder
     
     track
+  end
+  
+  def disc_number
+    (@path.disc_number ||
+     @id3v2.disc_number ||
+     1).to_i
+  end
+  
+  def number_of_discs_in_set
+    (@id3v2.max_disc_number ||
+     1).to_i
+  end
+  
+  def number_of_tracks_on_disc
+    @id3v2.max_sequence.to_i
   end
 end

@@ -17,11 +17,11 @@ class AlbumTest < Test::Unit::TestCase
     track_path = [ '../../mp3info/sample-metadata/zovietfrance/Popular Soviet Songs And Youth Music disc 3/zovietfrance - Popular Soviet Songs And Youth Music - 07 - Charm Aliso.mp3' ]
     albums = AlbumDao.load_albums_from_paths(track_path)
 
-    assert_equal 1, albums.first.number_of_discs
+    assert_equal 1, albums.first.number_of_discs_loaded
     assert_equal 1, albums.first.discs[3].tracks.length
     assert_equal 'Charm Aliso', albums.first.discs[3].tracks.first.name
     assert_equal 7, albums.first.discs[3].tracks.first.sequence
-    assert_equal 3, albums.first.discs[3].tracks.first.disc_number
+    assert_equal 3, albums.first.discs[3].number
   end
   
   def test_assemble_album_from_files
@@ -29,11 +29,11 @@ class AlbumTest < Test::Unit::TestCase
 
     assert_equal 1, albums.size, 'Three discs, but one album.'
     album = albums.first
-    assert_equal 3, album.number_of_discs
-    assert_equal 9, album.discs[1].number_of_tracks
-    assert_equal 9, album.discs[2].number_of_tracks
-    assert_equal 9, album.discs[3].number_of_tracks
-    assert_equal 27, album.number_of_tracks
+    assert_equal 3, album.number_of_discs_loaded
+    assert_equal 10, album.discs[1].number_of_tracks_loaded
+    assert_equal 18, album.discs[2].number_of_tracks_loaded
+    assert_equal 9, album.discs[3].number_of_tracks_loaded
+    assert_equal 37, album.number_of_tracks_loaded
     assert_equal ':zoviet*france:', album.artist_name
     assert_equal 'Popular Soviet Songs And Youth Music', album.name
     assert_equal 'Experimental', album.genre
@@ -44,10 +44,10 @@ class AlbumTest < Test::Unit::TestCase
 
     assert_equal 1, albums.size, 'Two discs, but one album (names need to be fixed).'
     album = albums.first
-    assert_equal 2, album.number_of_discs, 'One album, two discs.'
-    assert_equal 10, album.discs[1].number_of_tracks
-    assert_equal 10, album.discs[2].number_of_tracks
-    assert_equal 20, album.number_of_tracks
+    assert_equal 2, album.number_of_discs_loaded, 'One album, two discs.'
+    assert_equal 10, album.discs[1].number_of_tracks_loaded
+    assert_equal 10, album.discs[2].number_of_tracks_loaded
+    assert_equal 20, album.number_of_tracks_loaded
     assert_equal 'Razor X Productions', album.artist_name
     assert_equal 'Killing Sound', album.name
     assert_equal 'Dancehall', album.genre
@@ -58,9 +58,9 @@ class AlbumTest < Test::Unit::TestCase
 
     assert_equal 1, albums.size
     album = albums.first
-    assert_equal 1, album.number_of_discs
-    assert_equal 40, album.discs[1].number_of_tracks
-    assert_equal 40, album.number_of_tracks
+    assert_equal 1, album.number_of_discs_loaded
+    assert_equal 40, album.discs[1].number_of_tracks_loaded
+    assert_equal 40, album.number_of_tracks_loaded
     assert_equal 'Various Artists', album.artist_name
     assert_equal 'The Biggest Ragga Dancehall Anthems 2005', album.name
     
@@ -75,9 +75,9 @@ class AlbumTest < Test::Unit::TestCase
 
     assert_equal 1, albums.size
     album = albums.first
-    assert_equal 1, album.number_of_discs
-    assert_equal 8, album.discs[1].number_of_tracks
-    assert_equal 8, album.number_of_tracks
+    assert_equal 1, album.number_of_discs_loaded
+    assert_equal 8, album.discs[1].number_of_tracks_loaded
+    assert_equal 8, album.number_of_tracks_loaded
     assert_equal 'Keith Fullerton Whitman', album.artist_name
     assert_equal 'Multiples', album.name
     assert_equal '(26)', album.genre
