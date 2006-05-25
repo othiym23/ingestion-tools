@@ -16,6 +16,8 @@ unless PathUtils.album_ingested?(ARCHIVE_BASE, source_directory)
   
   albums = Album.from_paths(source_audio)
   albums.each do |album|
+    encoders = []
+    
     puts "#{album.artist_name}: #{album.name} (#{album.genre})"
     puts
     
@@ -26,8 +28,12 @@ unless PathUtils.album_ingested?(ARCHIVE_BASE, source_directory)
         out << "#{track.artist_name} - " if track.artist_name != album.artist_name
         out << "#{track.name}"
         puts out
+        encoders << track.encoder if track.encoder
       end
     end
+    
+    raw_encoder = encoders.compact.uniq.sort.join(", ")
+    puts "\nEncoded by #{raw_encoder}" if raw_encoder && raw_encoder != ''
     puts; puts
   end
 
