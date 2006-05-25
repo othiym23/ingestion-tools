@@ -1,3 +1,6 @@
+$:.unshift(File.expand_path(File.join(File.dirname(__FILE__), '../../mp3info/lib')))
+require 'mp3info'
+
 # set of classes meant to encapsulate metainformation in data transfer
 # objects about digitally-encoded tracks
 class TrackMetadata
@@ -27,7 +30,7 @@ class TrackPathMetadata < TrackMetadata
   private
   
   def split_disc_number_from_title!
-    disc_number_candidate = @album_name.match(/^(.+) disc ([0-9]+)$/)
+    disc_number_candidate = @album_name.match(/^(.+) \[?disc ([0-9]+)\]?$/)
     if disc_number_candidate
       @album_name = disc_number_candidate[1]
       @disc_number = disc_number_candidate[2].to_i
@@ -40,20 +43,80 @@ class TrackFilenameMetadata < TrackMetadata
 
   def initialize(full_path)
     super(full_path)
-    filename_elements = File.basename(full_path, '.mp3').split(' - ')
-    @artist_name = filename_elements[0]
-    @album_name = filename_elements[1]
-    @sequence = filename_elements[2]
-    @track_name = filename_elements[3]
+    filename = File.basename(full_path, '.mp3')
+    filename_elements = filename.split(' - ')
+    if filename_elements.size == 4
+      @artist_name = filename_elements[0]
+      @album_name = filename_elements[1]
+      @sequence = filename_elements[2]
+      @track_name = filename_elements[3]
+    else
+      @track_name = filename
+    end
   end
 end
 
 class TrackId3V2Metadata < TrackMetadata
   attr_accessor :disc_number, :max_disc_number, :sequence, :max_sequence
   attr_accessor :genre, :release_date, :comment, :encoder, :compilation
-  attr_accessor :musicbrainz_artist_id, :musicbrainz_album_id, :musicbrainz_album_type, :musicbrainz_album_status
+  attr_accessor :musicbrainz_artist_id, :musicbrainz_album_artist_id
+  attr_accessor :musicbrainz_album_id, :musicbrainz_album_type, :musicbrainz_album_status
+  attr_accessor :unique_id
   
   def initialize(full_path)
     super(full_path)
+    Mp3Info.open(full_path) do |mp3info_dao|
+      if mp3info_dao.hastag2?
+        id3v2 = mp3info_dao.tag2
+        @track_name = id3v2.TIT2 || id3v2.TT2
+        @album_name = id3v2.TALB || id3v2.TAL
+        @artist_name = id3v2.TPE1 || id3v2.TP1
+        @disc_number, @max_disc_number = id3v2.TPOS.split('/').map { |string| string.to_i } if id3v2.TPOS
+        if id3v2.TRCK
+          @sequence, @max_sequence = id3v2.TRCK.split('/').map { |string| string.to_i }
+        elsif id3v2.TRK
+          @sequence, @max_sequence = id3v2.TRK.split('/').map { |string| string.to_i }
+        end
+        @genre = id3v2.TCON || id3v2.TCO
+        if '1' == id3v2.TCMP
+          @compilation = true
+        else
+          @compilation = false
+        end
+        @release_date = id3v2.TYER || id3v2.TYE
+        @comment = id3v2.COMM
+        @encoder = id3v2.TENC
+        @unique_id = id3v2.UFID
+        id3v2.TXXX && id3v2.TXXX.each do |user_comment|
+          user_defined_name, user_defined_value = user_comment.split("\000")
+          case user_defined_name
+          when "MusicBrainz Artist Id"
+            @musicbrainz_artist_id = user_defined_value
+          when "MusicBrainz Album Id"
+            @musicbrainz_album_id = user_defined_value
+          when "MusicBrainz Album Type"
+            @musicbrainz_album_type = user_defined_value
+          when "MusicBrainz Album Status"
+            @musicbrainz_album_status = user_defined_value
+          when "MusicBrainz Album Artist Id"
+            @musicbrainz_album_artist_id = user_defined_value
+          end
+        end
+      else
+        throw IOError.new("No valid ID3 V2 tag found!")
+      end
+    end
+    
+    split_disc_number_from_title!
+  end
+  
+  private
+  
+  def split_disc_number_from_title!
+    disc_number_candidate = @album_name.match(/^(.+) [\(\[]?disc ([0-9]+)[\)\]]?$/) if @album_name
+    if disc_number_candidate
+      @album_name = disc_number_candidate[1]
+      @disc_number = disc_number_candidate[2].to_i unless @disc_number
+    end
   end
 end

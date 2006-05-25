@@ -30,7 +30,7 @@ class PathUtils
       # TODO: prompt if close matches exist
     end
 
-    safe_target = File.dirname(dest_path) + File::SEPARATOR + ".#{File.basename(dest_path)}-new"
+    safe_target = File.join(File.dirname(dest_path), ".#{File.basename(dest_path)}-new")
 
     FileUtils.cp(src_path, safe_target)
 
@@ -51,6 +51,19 @@ class PathUtils
     path.gsub(/[^a-zA-Z0-9 .\/-]/, '')
   end
   
+  def PathUtils.album_ingested?(archive_base, new_base)
+    path_elements = new_base.split(File::SEPARATOR)
+    artist_name = path_elements[-2]
+    album_name = path_elements[-1]
+
+    File.exists?(archive_base + File::SEPARATOR +
+                 artist_name + File::SEPARATOR + 
+                 album_name) ||
+    File.exists?(archive_base + File::SEPARATOR +
+                 artist_name + File::SEPARATOR + 
+                 "The " + album_name)
+  end
+
   private
   
   def PathUtils.mp3_file?(filename)
