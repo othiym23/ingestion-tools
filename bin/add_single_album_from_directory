@@ -3,9 +3,31 @@
 $:.unshift(File.join(File.dirname(__FILE__), '../lib'))
 
 require 'path_utils'
-require 'album'
+require 'dao/album_dao'
 
 ARCHIVE_BASE = '/data/music/mp3'
+
+def display_album(album)
+  encoders = []
+  
+  puts "#{album.artist_name}: #{album.name} (#{album.genre})"
+  puts
+  
+  album.discs.compact.each do |disc|
+    puts "  Disc #{disc.number}:"
+    disc.tracks.sort { |first,second| first.sequence <=> second.sequence }.each do |track|
+      out = "    #{disc.number}.#{track.sequence}: "
+      out << "#{track.artist_name} - " if track.artist_name != album.artist_name
+      out << "#{track.name}"
+      puts out
+      encoders << track.encoder if track.encoder
+    end
+  end
+  
+  raw_encoder = encoders.compact.uniq.sort.join(", ")
+  puts "\nEncoded by #{raw_encoder}" if raw_encoder && raw_encoder != ''
+  puts; puts
+end
 
 source_directory = File.expand_path(ARGV[0])
 raise IOError.new("Path #{source_directory} does not exist!") unless File.exists?(source_directory)
@@ -14,27 +36,10 @@ unless PathUtils.album_ingested?(ARCHIVE_BASE, source_directory)
   source_images = Dir.glob("#{source_directory + File::SEPARATOR}*.{jpg,jpeg,gif,png}")
   source_audio = Dir.glob("#{source_directory + File::SEPARATOR}**#{File::SEPARATOR}*.mp3")
   
-  albums = Album.from_paths(source_audio)
+  albums = AlbumDao.load_albums_from_paths(source_audio)
+
   albums.each do |album|
-    encoders = []
-    
-    puts "#{album.artist_name}: #{album.name} (#{album.genre})"
-    puts
-    
-    album.discs.compact.each do |disc|
-      puts "  Disc #{disc.number}:"
-      disc.tracks.sort { |first,second| first.sequence <=> second.sequence }.each do |track|
-        out = "    #{disc.number}.#{track.sequence}: "
-        out << "#{track.artist_name} - " if track.artist_name != album.artist_name
-        out << "#{track.name}"
-        puts out
-        encoders << track.encoder if track.encoder
-      end
-    end
-    
-    raw_encoder = encoders.compact.uniq.sort.join(", ")
-    puts "\nEncoded by #{raw_encoder}" if raw_encoder && raw_encoder != ''
-    puts; puts
+    display_album(album)
   end
 
   # TODO: display album metadata
