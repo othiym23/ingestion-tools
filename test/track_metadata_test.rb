@@ -1,6 +1,7 @@
-require 'test/unit'
+$:.unshift(File.expand_path(File.join(File.dirname(__FILE__), '../lib')))
 
-require '../lib/track_metadata'
+require 'test/unit'
+require 'track_metadata'
 
 class TrackMetadataTest < Test::Unit::TestCase
   def test_find_path_artist

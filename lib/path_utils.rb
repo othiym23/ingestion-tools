@@ -1,4 +1,6 @@
-require File.join(File.dirname(__FILE__), 'track_metadata')
+$:.unshift(File.expand_path(File.join(File.dirname(__FILE__), '.')))
+
+require 'track_metadata'
 require 'fileutils'
 
 class PathUtils

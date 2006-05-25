@@ -1,6 +1,8 @@
-require 'test/unit'
+$:.unshift(File.expand_path(File.join(File.dirname(__FILE__), '../lib')))
 
-require '../lib/album'
+require 'test/unit'
+require 'album'
+require 'dao/album_dao'
 
 class AlbumTest < Test::Unit::TestCase
   def setup
@@ -12,8 +14,9 @@ class AlbumTest < Test::Unit::TestCase
   end
 
   def test_default_album_from_path
-    track_path = ['../../mp3info/sample-metadata/zovietfrance/Popular Soviet Songs And Youth Music disc 3/zovietfrance - Popular Soviet Songs And Youth Music - 07 - Charm Aliso.mp3']
-    albums = Album.from_paths(track_path)
+    track_path = [ '../../mp3info/sample-metadata/zovietfrance/Popular Soviet Songs And Youth Music disc 3/zovietfrance - Popular Soviet Songs And Youth Music - 07 - Charm Aliso.mp3' ]
+    albums = AlbumDao.load_albums_from_paths(track_path)
+
     assert_equal 1, albums.first.number_of_discs
     assert_equal 1, albums.first.discs[3].tracks.length
     assert_equal 'Charm Aliso', albums.first.discs[3].tracks.first.name
@@ -22,9 +25,8 @@ class AlbumTest < Test::Unit::TestCase
   end
   
   def test_assemble_album_from_files
-    album_paths = Dir.glob(File.join(File.expand_path('../../mp3info/sample-metadata'), "zovietfrance/*/*.mp3"))
-    
-    albums = Album.from_paths(album_paths)
+    albums = load_albums("zovietfrance/*/*.mp3")
+
     assert_equal 1, albums.size, 'Three discs, but one album.'
     album = albums.first
     assert_equal 3, album.number_of_discs
@@ -38,9 +40,8 @@ class AlbumTest < Test::Unit::TestCase
   end
 
   def test_assemble_album_from_precanonicalized_tags
-    album_paths = Dir.glob(File.join(File.expand_path('../../mp3info/sample-metadata'), "Razor X Productions/*/*.mp3"))
-    
-    albums = Album.from_paths(album_paths)
+    albums = load_albums("Razor X Productions/*/*.mp3")
+
     assert_equal 1, albums.size, 'Two discs, but one album (names need to be fixed).'
     album = albums.first
     assert_equal 2, album.number_of_discs, 'One album, two discs.'
@@ -53,9 +54,8 @@ class AlbumTest < Test::Unit::TestCase
   end
 
   def test_assemble_compilation_with_unicode_tags
-    album_paths = Dir.glob(File.join(File.expand_path('../../mp3info/sample-metadata'), "Various Artists/The Biggest Ragga Dancehall Anthems 2005/*.mp3"))
-    
-    albums = Album.from_paths(album_paths)
+    albums = load_albums("Various Artists/The Biggest Ragga Dancehall Anthems 2005/*.mp3")
+
     assert_equal 1, albums.size
     album = albums.first
     assert_equal 1, album.number_of_discs
@@ -70,10 +70,9 @@ class AlbumTest < Test::Unit::TestCase
     assert_equal 'Dancehall', album.genre
   end
 
-  def test_assemble_album_from_2_2_tags_with_noncanonical_filenames
-    album_paths = Dir.glob(File.join(File.expand_path('../../mp3info/sample-metadata'), "Keith Fullerton Whitman/Multiples/*.mp3"))
-    
-    albums = Album.from_paths(album_paths)
+  def test_assemble_album_from_2_2_tags_with_old_itunes_filenames
+    albums = load_albums("Keith Fullerton Whitman/Multiples/*.mp3")
+
     assert_equal 1, albums.size
     album = albums.first
     assert_equal 1, album.number_of_discs
@@ -82,6 +81,17 @@ class AlbumTest < Test::Unit::TestCase
     assert_equal 'Keith Fullerton Whitman', album.artist_name
     assert_equal 'Multiples', album.name
     assert_equal '(26)', album.genre
+  end
+  
+  private
+  
+  def load_albums(path)
+    album_paths = find_files(path)
+    AlbumDao.load_albums_from_paths(album_paths)
+  end
+
+  def find_files(path)
+    Dir.glob(File.join(File.expand_path('../../mp3info/sample-metadata'), path))
   end
 end
 

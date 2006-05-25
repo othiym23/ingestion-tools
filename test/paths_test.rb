@@ -1,6 +1,7 @@
-require 'test/unit'
+$:.unshift(File.expand_path(File.join(File.dirname(__FILE__), '../lib')))
 
-require '../lib/path_utils'
+require 'test/unit'
+require 'path_utils'
 
 class PathsTest < Test::Unit::TestCase
   def test_path_has_mp3

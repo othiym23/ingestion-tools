@@ -1,4 +1,5 @@
 $:.unshift(File.expand_path(File.join(File.dirname(__FILE__), '../../mp3info/lib')))
+
 require 'mp3info'
 
 # set of classes meant to encapsulate metainformation in data transfer
@@ -19,7 +20,6 @@ class TrackPathMetadata < TrackMetadata
     path_elements = File.dirname(full_path).split(File::SEPARATOR)
     @artist_name = path_elements[-2]
     @album_name = path_elements[-1]
-    @disc_number = 1
     split_disc_number_from_title!
   end
   
@@ -74,13 +74,13 @@ class TrackId3V2Metadata < TrackMetadata
           @album_name = @album_name.first
         end
         @artist_name = id3v2.TPE1 || id3v2.TP1
-        @disc_number, @max_disc_number = id3v2.TPOS.split('/').map { |string| string.to_i } if id3v2.TPOS
+        @disc_number, @max_disc_number = id3v2.TPOS.split('/') if id3v2.TPOS
         raw_sequence = id3v2.TRCK || id3v2.TRK
         if raw_sequence
           if raw_sequence.class == Array
-            @sequence, @max_sequence = raw_sequence.first.split('/').map { |string| string.to_i }
+            @sequence, @max_sequence = raw_sequence.first.split('/')
           else
-            @sequence, @max_sequence = raw_sequence.split('/').map { |string| string.to_i }
+            @sequence, @max_sequence = raw_sequence.split('/')
           end
         end
         @genre = id3v2.TCON || id3v2.TCO
