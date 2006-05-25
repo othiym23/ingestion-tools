@@ -20,6 +20,7 @@ def display_album(album)
       out << "#{track.artist_name} - " if track.artist_name != album.artist_name
       out << "#{track.name}"
       puts out
+      puts "      Comments: #{track.comment}" if track.comment && track.comment != ''
       encoders << track.encoder if track.encoder
     end
   end
