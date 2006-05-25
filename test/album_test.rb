@@ -80,7 +80,7 @@ class AlbumTest < Test::Unit::TestCase
     assert_equal 8, album.number_of_tracks_loaded
     assert_equal 'Keith Fullerton Whitman', album.artist_name
     assert_equal 'Multiples', album.name
-    assert_equal '(26)', album.genre
+    assert_equal 'Ambient', album.genre
   end
   
   private
