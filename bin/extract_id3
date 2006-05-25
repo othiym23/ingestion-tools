@@ -1,0 +1,80 @@
+#!/usr/bin/env ruby
+
+$:.unshift(File.join(File.dirname(__FILE__), '../lib'))
+$:.unshift(File.join(File.dirname(__FILE__), '../../mp3info/lib'))
+
+require 'path_utils'
+require 'mp3info'
+
+def get_syncsafe(file)
+  (file.getc << 21) + (file.getc << 14) + (file.getc << 7) + file.getc
+end
+
+def find_next_frame(open_file)
+  dummyproof = [ open_file.stat.size - open_file.pos, 2000000 ].min
+  dummyproof.times do |i|
+    if open_file.getc == 0xff
+      data = open_file.read(3)
+      raise IOError if open_file.eof?
+      head = 0xff000000 + (data[0] << 16) + (data[1] << 8) + data[2]
+      if check_head(head)
+          return head
+      else
+          open_file.seek(-3, IO::SEEK_CUR)
+      end
+    end
+  end
+  raise IOError, "cannot find a valid frame after reading #{dummyproof} bytes"
+end
+
+def check_head(head)
+  return false if head & 0xffe00000 != 0xffe00000    # 11 bit MPEG frame sync
+  return false if head & 0x00060000 == 0x00060000    #  2 bit layer type
+  return false if head & 0x0000f000 == 0x0000f000    #  4 bit bitrate
+  return false if head & 0x0000f000 == 0x00000000    #        free format bitstream
+  return false if head & 0x00000c00 == 0x00000c00    #  2 bit frequency
+  return false if head & 0xffff0000 == 0xfffe0000
+  true
+end
+
+source_directory = File.expand_path(ARGV[0])
+target_directory = File.expand_path(ARGV[1])
+
+raise IOError.new("Path #{source_directory} does not exist!") unless File.exists?(source_directory)
+raise IOError.new("Path #{target_directory} does not exist!") unless File.exists?(target_directory)
+raise IOError.new("Paths for source and destination must differ!") unless source_directory != target_directory
+
+puts "START: processing MP3 files in #{source_directory}."
+
+source_mp3s = Dir.glob(File.join(source_directory, "*.mp3"))
+
+source_mp3s.each do |source_file|
+  target_id3_intermediate = File.join(target_directory, "#{File.basename(source_file)}-int")
+  target_id3_final = File.join(target_directory, File.basename(source_file))
+  PathUtils.safe_copy(source_file, target_id3_intermediate)
+  
+  File.open(target_id3_intermediate, "rb") do |file|
+    file.seek(0)
+    file.close and next unless file.read(3) == 'ID3'
+    file.read(3)
+    tag2_len = get_syncsafe(file)
+    file.seek(tag2_len)
+    find_next_frame(file)
+    find_next_frame(file)
+    pos = file.pos
+    
+    unless File.exists?(target_id3_final)
+      File.open(target_id3_final, "wb") do |output|
+        file.seek(0)
+        output.write(file.read(pos))
+      end
+    else
+      raise IOError.new("Tried to replace an existing MP3! That's BAD!")
+    end
+  end
+  
+  File.delete(target_id3_intermediate)
+  
+  saved_tag = Mp3Info.new(target_id3_final)
+  puts saved_tag.to_s
+end
