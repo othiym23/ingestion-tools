@@ -20,9 +20,7 @@ def format_comments(comments)
     comment_string = comments if comments
   end
   
-  if comment_string =~ /^\[eng\]: ?$/
-    return ''
-  elsif comment_string =~ /^\[eng\]: Track \d+$/
+  if comment_string =~ /^Track \d+$/
     return ''
   else
     return comment_string
@@ -46,7 +44,9 @@ def display_album(album)
       puts out
       puts "      Featured: #{track.featured_artists.join(', ')}" if track.featured_artists.size > 0
       puts "      Remix: #{track.remix}" if track.remix && track.remix != ''
+      puts "      Genre: #{track.genre}" if track.genre && track.genre != album.genre
       puts "      Comments: [#{comments}]" if comments != ''
+      puts "      Release date: #{track.release_date}" if track.release_date && track.release_date != album.release_date
       encoders << track.encoder if track.encoder.size > 0
     end
   end

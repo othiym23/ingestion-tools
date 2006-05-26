@@ -1,12 +1,13 @@
 # display and correct album metadata
 ## canonicalize track, artist and album capitalization
 ## canonicalize track filename and rename to canonicalized standard
-# Fix mp3info to handle frames as classes
+## canonicalize encoder list
+# validate number of tracks in set vs number of tracks loaded
 # handle sort order from frames (TSOP in 2.4 / XSOP in 2.3)
-# canonicalize encoder list
 # collect comments and turn into encoder when one is missing
 # flag and correct unmarked compilations
 # flag and remove ID3v1 tag
+# split consolidated multi-disc albums back into their discs
 # safely save changed tags to disk
 # safely move corrected files into place with correct name
 # safely remove empty directories

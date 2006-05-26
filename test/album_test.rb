@@ -113,6 +113,28 @@ class AlbumTest < Test::Unit::TestCase
     assert_equal '2002', album.release_date
   end
   
+  def test_album_find_hidden_soundtrack
+    albums = load_albums("Various Artists/The Crow OST/*.mp3")
+
+    album = albums.first
+    assert_equal 'The Crow', album.name
+    assert_equal 'Soundtrack', album.genre
+    album.discs.compact.each do |disc|
+      disc.tracks.each do |track|
+        assert_equal album.genre, track.genre
+      end
+    end
+  end
+  
+  def test_album_musicbrainz_metadata
+    albums = load_albums("324/Boutokunotaiyo/*.mp3")
+
+    album = albums.first
+    assert_equal 'd5b75c8e-ae03-4b00-934a-af2668339f48', album.musicbrainz_album_id
+    assert_equal 'album', album.musicbrainz_album_type
+    assert_equal 'official', album.musicbrainz_album_status
+  end
+  
   private
   
   def load_albums(path)

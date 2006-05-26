@@ -31,6 +31,8 @@ class TrackDao
     track.comment = @id3.comment
     track.encoder = @id3.encoder
     track.release_date = @id3.release_date
+    track.unique_id = @id3.unique_id
+    track.musicbrainz_artist_id = @id3.musicbrainz_artist_id
     
     track.set_remix!
     track.set_featured_artists!
@@ -57,5 +59,21 @@ class TrackDao
   
   def number_of_tracks_on_disc
     @id3.max_sequence.to_i
+  end
+  
+  def musicbrainz_album_artist_id
+    return @id3.musicbrainz_album_artist_id
+  end
+  
+  def musicbrainz_album_id
+    return @id3.musicbrainz_album_id
+  end
+  
+  def musicbrainz_album_type
+    return @id3.musicbrainz_album_type
+  end
+  
+  def musicbrainz_album_status 
+    return @id3.musicbrainz_album_status
   end
 end

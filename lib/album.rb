@@ -2,7 +2,8 @@ class Album
   attr_accessor :name, :artist_name
   attr_accessor :discs, :number_of_discs
   attr_accessor :genre, :release_date, :compilation, :mixer
-  attr_accessor :musicbrainz_album_id, :musicbrainz_album_type, :musicbrainz_album_status
+  attr_accessor :musicbrainz_album_id, :musicbrainz_album_artist_id
+  attr_accessor :musicbrainz_album_type, :musicbrainz_album_status
   
   def initialize
     @discs = []
@@ -29,32 +30,27 @@ class Album
       start_comment = start_comment.uniq.join(' / ')
     end
 
-    if start_comment != nil && start_comment != '' && start_comment != '[eng]: '
+    if start_comment != nil && start_comment != ''
       consistent = true
       
       @discs.compact.each do |disc|
         disc.tracks.each do |track|
-          cur_comment = track.comment
-          if cur_comment.is_a? Array
-            cur_comment = cur_comment.uniq.join(' / ')
-          end
-          
-          if cur_comment != start_comment
+          if track.comment != start_comment
             consistent = false
             break
           end
         end
       end
       
-      if consistent
+      encoder_list = start_comment.split(' / ').compact.select {|encoder| !(encoder =~ /^\s*$/)}
+      if consistent && encoder_list && encoder_list.size > 0
         @discs.compact.each do |disc|
           disc.tracks.each do |track|
             track.comment = nil
             if track.encoder.nil?
-              track.encoder = [ start_comment.split(' / ') ]
-            else
-              track.encoder << start_comment.split(' / ')
+              track.encoder = []
             end
+            track.encoder << encoder_list
           end
         end
       end
@@ -65,6 +61,19 @@ class Album
     if patterns = @name.match(/^(.*) \([Mm]ixed [Bb]y (.*)\)(.*)$/)
       @name = patterns[1] + patterns[3]
       @mixer = patterns[2]
+    end
+  end
+
+  def find_hidden_soundtrack!
+    if patterns = @name.match(/^(.*) OST$/)
+      @name = patterns[1]
+      @genre = 'Soundtrack'
+
+      discs.compact.each do |disc|
+        disc.tracks.each do |track|
+          track.genre = 'Soundtrack'
+        end
+      end
     end
   end
 end

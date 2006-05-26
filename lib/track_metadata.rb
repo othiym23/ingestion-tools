@@ -1,6 +1,8 @@
 $:.unshift(File.expand_path(File.join(File.dirname(__FILE__), '../../mp3info/lib')))
+$:.unshift(File.expand_path(File.join(File.dirname(__FILE__), '.')))
 
 require 'mp3info'
+require 'adaptor/mp3info_factory'
 
 # set of classes meant to encapsulate metainformation in data transfer
 # objects about digitally-encoded tracks
@@ -66,8 +68,6 @@ class TrackId3Metadata < TrackMetadata
   def initialize(full_path)
     super(full_path)
     
-    @encoder = []
-    
     Mp3Info.open(full_path) do |mp3info_dao|
       # Just in case, try prepopulating with ID3v1 data if it's available
       if mp3info_dao.hastag1?
@@ -82,116 +82,35 @@ class TrackId3Metadata < TrackMetadata
       end
       
       if mp3info_dao.hastag2?
-        if mp3info_dao.tag2.version =~ /2\.3/ || mp3info_dao.tag2.version =~ /2\.4/
-          id3v23 = mp3info_dao.tag2
-          @track_name = id3v23.TIT2
-          if @track_name.class == Array
-            @track_name = @track_name.first
-          end
-          @album_name = id3v23.TALB
-          if @album_name.class == Array
-            @album_name = @album_name.first
-          end
-          @artist_name = id3v23.TPE1
-          if @artist_name.class == Array
-            @artist_name.each do |name|
-              if name =~ /Various/
-                next
-              else
-                @artist_name = name
-                break
-              end
-            end
-          end
-          @disc_number, @max_disc_number = id3v23.TPOS.split('/') if id3v23.TPOS
-          raw_sequence = id3v23.TRCK
-          if raw_sequence
-            if raw_sequence.class == Array
-              @sequence, @max_sequence = raw_sequence.first.split('/')
-            else
-              @sequence, @max_sequence = raw_sequence.split('/')
-            end
-          end
-          @genre = id3v23.TCON
-          if @genre.class == Array
-            @genre = @genre.uniq.first
-          end
-          if '1' == id3v23.TCMP
-            @compilation = true
-          else
-            @compilation = false
-          end
-          @release_date = id3v23.TYER
-          @comment = id3v23.COMM
-          @encoder << id3v23.TENC.split(' / ') if id3v23.TENC
-          @unique_id = id3v23.UFID
-          id3v23.TXXX && id3v23.TXXX.each do |user_comment|
-            user_defined_name, user_defined_value = user_comment.split("\000")
-            case user_defined_name
-            when "MusicBrainz Artist Id"
-              @musicbrainz_artist_id = user_defined_value
-            when "MusicBrainz Album Id"
-              @musicbrainz_album_id = user_defined_value
-            when "MusicBrainz Album Type"
-              @musicbrainz_album_type = user_defined_value
-            when "MusicBrainz Album Status"
-              @musicbrainz_album_status = user_defined_value
-            when "MusicBrainz Album Artist Id"
-              @musicbrainz_album_artist_id = user_defined_value
-            end
-          end
-        elsif  mp3info_dao.tag2.version =~ /2\.2/
-          id3v22 = mp3info_dao.tag2
-          @track_name = id3v22.TT2
-          if @track_name.class == Array
-            @track_name = @track_name.first
-          end
-          @album_name = id3v22.TAL
-          if @album_name.class == Array
-            @album_name = @album_name.first
-          end
-          @artist_name = id3v22.TP1
-          if @artist_name.class == Array
-            @artist_name.each do |name|
-              if name =~ /Various/
-                next
-              else
-                @artist_name = name
-                break
-              end
-            end
-          end
-          @disc_number, @max_disc_number = id3v22.TPA.split('/') if id3v22.TPA
-          raw_sequence = id3v22.TRK
-          if raw_sequence
-            if raw_sequence.class == Array
-              @sequence, @max_sequence = raw_sequence.first.split('/')
-            else
-              @sequence, @max_sequence = raw_sequence.split('/')
-            end
-          end
-          @genre = id3v22.TCO
-          if @genre.class == Array
-            @genre = @genre.uniq.first
-          end
-          @release_date = id3v22.TYE
-          @comment = id3v22.COM
-          @encoder << id3v22.TEN.split(' / ') if id3v22.TENC
-          @unique_id = id3v22.UFI
-          id3v22.TXX && id3v22.TXX.each do |user_comment|
-            user_defined_name, user_defined_value = user_comment.split("\000")
-            case user_defined_name
-            when "MusicBrainz Artist Id"
-              @musicbrainz_artist_id = user_defined_value
-            when "MusicBrainz Album Id"
-              @musicbrainz_album_id = user_defined_value
-            when "MusicBrainz Album Type"
-              @musicbrainz_album_type = user_defined_value
-            when "MusicBrainz Album Status"
-              @musicbrainz_album_status = user_defined_value
-            when "MusicBrainz Album Artist Id"
-              @musicbrainz_album_artist_id = user_defined_value
-            end
+        id3v2 = Mp3InfoFactory.adaptor(mp3info_dao.tag2)
+
+        @track_name = reconcile_value(id3v2.track_name)
+        @album_name = reconcile_value(id3v2.album_name)
+        @artist_name = reconcile_value(id3v2.artist_name)
+        @disc_number, @max_disc_number = reconcile_value(id3v2.disc_set).split('/') if id3v2.disc_set
+        raw_sequence = reconcile_value(id3v2.sequence_info).split('/')
+        @genre = reconcile_value(id3v2.genre)
+        if '1' == reconcile_value(id3v2.compilation?)
+          @compilation = true
+        else
+          @compilation = false
+        end
+        @release_date = reconcile_value(id3v2.release_date)
+        @comment = reconcile_value(id3v2.comment)
+        @encoder = reconcile_encoders(id3v2.encoder)
+        @unique_id = reconcile_value(id3v2.unique_id)
+        id3v2.user_text && reconcile_value_as_list(id3v2.user_text).each do |user_comment|
+          case user_comment.description
+          when "MusicBrainz Artist Id"
+            @musicbrainz_artist_id = user_comment.value
+          when "MusicBrainz Album Id"
+            @musicbrainz_album_id = user_comment.value
+          when "MusicBrainz Album Type"
+            @musicbrainz_album_type = user_comment.value
+          when "MusicBrainz Album Status"
+            @musicbrainz_album_status = user_comment.value
+          when "MusicBrainz Album Artist Id"
+            @musicbrainz_album_artist_id = user_comment.value
           end
         end
 
@@ -209,6 +128,39 @@ class TrackId3Metadata < TrackMetadata
     if disc_number_candidate
       @album_name = disc_number_candidate[1]
       @disc_number = disc_number_candidate[2].to_i unless @disc_number
+    end
+  end
+  
+  def reconcile_value(id3v2_frame)
+    if id3v2_frame.is_a? Array
+      compacted_array = id3v2_frame.compact.map {|frame| frame.value if frame.respond_to?(:value)}.uniq
+      if compacted_array.size == 1
+        return compacted_array.first
+      else
+        # TODO: log a warning
+      end
+    else
+     return id3v2_frame.value if id3v2_frame
+    end
+  end
+  
+  def reconcile_encoders(encoder_frame)
+    encoder_list = []
+    
+    if encoder_frame.is_a? Array
+      encoder_list = encoder_frame.collect {|frame| frame.value.split(' / ') if frame.respond_to?(:value)}
+    else
+      encoder_list = encoder_frame.value.split(' / ') if encoder_frame
+    end
+    
+    encoder_list
+  end
+  
+  def reconcile_value_as_list(frame)
+    if !frame.is_a? Array
+      [frame]
+    else
+      frame
     end
   end
 end

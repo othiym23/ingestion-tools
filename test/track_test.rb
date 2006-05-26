@@ -10,7 +10,7 @@ class TrackTest < Test::Unit::TestCase
     assert_equal ':zoviet*france:', track.artist_name
     assert_equal 'Experimental', track.genre
     assert_equal 7, track.sequence
-    assert_equal '(ID3v1 Comment) [XXX]: RIPT with GRIP', track.comment
+    assert_equal 'RIPT with GRIP', track.comment
   end
   
   def test_featured_artist_parsing
@@ -33,12 +33,34 @@ class TrackTest < Test::Unit::TestCase
 
     assert_equal 'Girl/Boy Song', track.name
     assert_equal '£18 Snarerush Mix', track.remix, "£18 Snarerush Mix should be removed from track name {#{track.name}}"
+    
+    track = load_track('Various Artists/Wonka Beats/Aquastep - Wonka Beats - 01 - Oempa Loempa (original).mp3')
+
+    assert_equal 'Oempa Loempa', track.name
+    assert_equal 'original', track.remix
+    
+    track = load_track('Various Artists/Wonka Beats/Aquastep - Wonka Beats - 08 - Oempa Loempa (instrumental).mp3')
+
+    assert_equal 'Oempa Loempa', track.name
+    assert_equal 'instrumental', track.remix
+    
+    track = load_track('Various Artists/Wonka Beats/Aquastep - Wonka Beats - 16 - Oempa Loempa (vocal).mp3')
+
+    assert_equal 'Oempa Loempa', track.name
+    assert_equal 'vocal', track.remix
   end
   
   def test_track_release_date
     track = load_track('324/Boutokunotaiyo/324 - Boutokunotaiyo - 05 - Japanese Characters.mp3')
 
     assert_equal '2002', track.release_date
+  end
+  
+  def test_track_musicbrainz_metadata
+    track = load_track('324/Boutokunotaiyo/324 - Boutokunotaiyo - 03 - Red Origin Still Streaming.mp3')
+
+    assert_equal '7e5f38c8-eff6-4204-9f84-e344c54e7ca8', track.musicbrainz_artist_id
+    assert_equal '5cde5a57-6118-4d67-946e-4e565e2c7b54', track.unique_id
   end
   
   def test_wack_grip_id3_tag

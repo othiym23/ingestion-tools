@@ -7,7 +7,6 @@ require 'dao/track_dao'
 class AlbumDao
   def AlbumDao.load_albums_from_paths(paths)
     albums = {}
-
     paths.each do |path|
       track_dao = TrackDao.new(path)
       track = track_dao.load_track(path)
@@ -19,6 +18,10 @@ class AlbumDao
         albums[album_name] = new_album
       end
       album = albums[album_name]
+      album.musicbrainz_album_artist_id = track_dao.musicbrainz_album_artist_id if track_dao.musicbrainz_album_artist_id
+      album.musicbrainz_album_id = track_dao.musicbrainz_album_id if track_dao.musicbrainz_album_id
+      album.musicbrainz_album_type = track_dao.musicbrainz_album_type if track_dao.musicbrainz_album_type
+      album.musicbrainz_album_status = track_dao.musicbrainz_album_status if track_dao.musicbrainz_album_status
       
       disc_number = track_dao.disc_number
       if album.discs[disc_number].nil?
@@ -40,6 +43,7 @@ class AlbumDao
       
       album.set_mixer!
       album.set_encoder_from_comments!
+      album.find_hidden_soundtrack!
       
       album.discs.compact.each do |disc|
         disc.tracks.each do |track|
@@ -66,7 +70,7 @@ class AlbumDao
       if 1 == years.compact.uniq.size
         album.release_date = years.compact.first
       else
-        album.release_date = years.compact.uniq.join(", ")
+        album.release_date = years.compact.uniq.sort.last
       end
     end
     
