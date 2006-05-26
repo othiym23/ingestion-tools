@@ -15,10 +15,6 @@ class TrackDao
   def load_track(path)
     track = Track.new(path)
     
-    track.album_name =
-      @id3.album_name ||
-      @filename.album_name ||
-      @path.album_name
     track.name =
       @id3.track_name ||
       @filename.track_name
@@ -34,10 +30,20 @@ class TrackDao
     track.genre = @id3.genre
     track.comment = @id3.comment
     track.encoder = @id3.encoder
+    track.release_date = @id3.release_date
+    
+    track.set_remix!
+    track.set_featured_artists!
     
     track
   end
   
+  def album_name
+    @id3.album_name ||
+    @filename.album_name ||
+    @path.album_name
+  end
+
   def disc_number
     (@path.disc_number ||
      @id3.disc_number ||

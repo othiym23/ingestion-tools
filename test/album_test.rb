@@ -39,7 +39,7 @@ class AlbumTest < Test::Unit::TestCase
     assert_equal 'Experimental', album.genre
   end
 
-  def test_assemble_album_from_precanonicalized_tags
+  def test_assemble_album_before_tags_canonicalized
     albums = load_albums("Razor X Productions/*/*.mp3")
 
     assert_equal 1, albums.size, 'Two discs, but one album (names need to be fixed).'
@@ -81,6 +81,36 @@ class AlbumTest < Test::Unit::TestCase
     assert_equal 'Keith Fullerton Whitman', album.artist_name
     assert_equal 'Multiples', album.name
     assert_equal 'Ambient', album.genre
+  end
+  
+  def test_convert_RIPT_w_GRIP_from_comment_to_encoder
+    albums = load_albums("1349/Liberation/*.mp3")
+
+    album = albums.first
+    assert_equal 10, album.number_of_tracks_loaded
+    album.discs.compact.each do |disc|
+      disc.tracks.each do |track|
+        assert track.encoder.join(' / ') =~ /RIPT with GRIP/,
+               "RIPT with GRIP comment should have moved to track for #{track.name}"
+        assert_nil track.comment,
+               "Encoder should have been cleared out" 
+      end
+    end
+  end
+  
+  def test_find_mixer_name
+    albums = load_albums("Boredoms/Rebore Vol 3 mixed by DJ Krush/*.mp3")
+
+    album = albums.first
+    assert_equal 'Rebore Vol. 3', album.name
+    assert_equal 'DJ Krush', album.mixer
+  end
+  
+  def test_album_release_date
+    albums = load_albums("324/Boutokunotaiyo/*.mp3")
+
+    album = albums.first
+    assert_equal '2002', album.release_date
   end
   
   private

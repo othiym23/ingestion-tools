@@ -12,7 +12,7 @@ class AlbumDao
       track_dao = TrackDao.new(path)
       track = track_dao.load_track(path)
 
-      album_name = track.album_name
+      album_name = track_dao.album_name
       if albums[album_name].nil?
         new_album = Album.new
         new_album.name = album_name
@@ -36,11 +36,16 @@ class AlbumDao
     albums.each do |album_name,album|
       artists = []
       genres = []
-
+      years = []
+      
+      album.set_mixer!
+      album.set_encoder_from_comments!
+      
       album.discs.compact.each do |disc|
         disc.tracks.each do |track|
           artists << track.artist_name
           genres << track.genre
+          years << track.release_date
         end
       end
       
@@ -56,6 +61,12 @@ class AlbumDao
         album.genre = genres.first
       else
         album.genre = genres.compact.uniq.join(", ")
+      end
+      
+      if 1 == years.compact.uniq.size
+        album.release_date = years.compact.first
+      else
+        album.release_date = years.compact.uniq.join(", ")
       end
     end
     

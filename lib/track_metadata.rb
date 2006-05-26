@@ -65,6 +65,9 @@ class TrackId3Metadata < TrackMetadata
   
   def initialize(full_path)
     super(full_path)
+    
+    @encoder = []
+    
     Mp3Info.open(full_path) do |mp3info_dao|
       # Just in case, try prepopulating with ID3v1 data if it's available
       if mp3info_dao.hastag1?
@@ -82,11 +85,24 @@ class TrackId3Metadata < TrackMetadata
         if mp3info_dao.tag2.version =~ /2\.3/ || mp3info_dao.tag2.version =~ /2\.4/
           id3v23 = mp3info_dao.tag2
           @track_name = id3v23.TIT2
+          if @track_name.class == Array
+            @track_name = @track_name.first
+          end
           @album_name = id3v23.TALB
           if @album_name.class == Array
             @album_name = @album_name.first
           end
           @artist_name = id3v23.TPE1
+          if @artist_name.class == Array
+            @artist_name.each do |name|
+              if name =~ /Various/
+                next
+              else
+                @artist_name = name
+                break
+              end
+            end
+          end
           @disc_number, @max_disc_number = id3v23.TPOS.split('/') if id3v23.TPOS
           raw_sequence = id3v23.TRCK
           if raw_sequence
@@ -97,6 +113,9 @@ class TrackId3Metadata < TrackMetadata
             end
           end
           @genre = id3v23.TCON
+          if @genre.class == Array
+            @genre = @genre.uniq.first
+          end
           if '1' == id3v23.TCMP
             @compilation = true
           else
@@ -104,8 +123,7 @@ class TrackId3Metadata < TrackMetadata
           end
           @release_date = id3v23.TYER
           @comment = id3v23.COMM
-          @encoder = id3v23.TENC
-          @encoder << " / ::AOAIOXXYSZ:: encoding tools" if @encoder
+          @encoder << id3v23.TENC.split(' / ') if id3v23.TENC
           @unique_id = id3v23.UFID
           id3v23.TXXX && id3v23.TXXX.each do |user_comment|
             user_defined_name, user_defined_value = user_comment.split("\000")
@@ -125,11 +143,24 @@ class TrackId3Metadata < TrackMetadata
         elsif  mp3info_dao.tag2.version =~ /2\.2/
           id3v22 = mp3info_dao.tag2
           @track_name = id3v22.TT2
+          if @track_name.class == Array
+            @track_name = @track_name.first
+          end
           @album_name = id3v22.TAL
           if @album_name.class == Array
             @album_name = @album_name.first
           end
           @artist_name = id3v22.TP1
+          if @artist_name.class == Array
+            @artist_name.each do |name|
+              if name =~ /Various/
+                next
+              else
+                @artist_name = name
+                break
+              end
+            end
+          end
           @disc_number, @max_disc_number = id3v22.TPA.split('/') if id3v22.TPA
           raw_sequence = id3v22.TRK
           if raw_sequence
@@ -140,10 +171,12 @@ class TrackId3Metadata < TrackMetadata
             end
           end
           @genre = id3v22.TCO
+          if @genre.class == Array
+            @genre = @genre.uniq.first
+          end
           @release_date = id3v22.TYE
           @comment = id3v22.COM
-          @encoder = id3v22.TEN
-          @encoder << " / ::AOAIOXXYSZ:: encoding tools" if @encoder
+          @encoder << id3v22.TEN.split(' / ') if id3v22.TENC
           @unique_id = id3v22.UFI
           id3v22.TXX && id3v22.TXX.each do |user_comment|
             user_defined_name, user_defined_value = user_comment.split("\000")

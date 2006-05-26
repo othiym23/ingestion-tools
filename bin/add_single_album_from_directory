@@ -1,5 +1,4 @@
 #!/usr/bin/env ruby
-
 $:.unshift(File.join(File.dirname(__FILE__), '../lib'))
 
 require 'path_utils'
@@ -7,25 +6,54 @@ require 'dao/album_dao'
 
 ARCHIVE_BASE = '/data/music/mp3'
 
+# TODO: move this into the track class
+def format_comments(comments)
+  comment_string = ''
+  if Array == comments.class
+    consolidated = comments.uniq
+    if consolidated.size == 1
+      comment_string = consolidated [0]
+    else
+      comment_string = consolidated.join(', ')
+    end
+  else
+    comment_string = comments if comments
+  end
+  
+  if comment_string =~ /^\[eng\]: ?$/
+    return ''
+  elsif comment_string =~ /^\[eng\]: Track \d+$/
+    return ''
+  else
+    return comment_string
+  end
+end
+
 def display_album(album)
   encoders = []
   
-  puts "#{album.artist_name}: #{album.name} (#{album.genre})"
+  puts "[#{album.release_date}] #{album.artist_name}: #{album.name} (#{album.genre})"
+  puts "    Mixed by #{album.mixer}" if album.mixer
   puts
   
   album.discs.compact.each do |disc|
-    puts "  Disc #{disc.number}:"
+    puts "  Disc #{disc.number}:" if album.discs.compact.size > 1
     disc.tracks.sort { |first,second| first.sequence <=> second.sequence }.each do |track|
+      comments =  format_comments(track.comment)
       out = "    #{disc.number}.#{track.sequence}: "
       out << "#{track.artist_name} - " if track.artist_name != album.artist_name
       out << "#{track.name}"
       puts out
-      puts "      Comments: #{track.comment}" if track.comment && track.comment != ''
-      encoders << track.encoder if track.encoder
+      puts "      Featured: #{track.featured_artists.join(', ')}" if track.featured_artists.size > 0
+      puts "      Remix: #{track.remix}" if track.remix && track.remix != ''
+      puts "      Comments: [#{comments}]" if comments != ''
+      encoders << track.encoder if track.encoder.size > 0
     end
   end
   
-  raw_encoder = encoders.compact.uniq.sort.join(", ")
+  encoders = encoders.compact.uniq
+  encoders << "::AOAIOXXYSZ:: encoding tools, v1"
+  raw_encoder = encoders.join("\n           ")
   puts "\nEncoded by #{raw_encoder}" if raw_encoder && raw_encoder != ''
   puts; puts
 end
