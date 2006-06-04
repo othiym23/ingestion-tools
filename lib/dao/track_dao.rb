@@ -9,7 +9,7 @@ class TrackDao
   def initialize(path)
     @path = TrackPathMetadata.new(path)
     @filename = TrackFilenameMetadata.new(path)
-    @id3 = TrackId3Metadata.new(path)
+    @id3 = TrackId3Metadata.load_from_path(path)
   end
 
   def load_track(path)
@@ -47,8 +47,8 @@ class TrackDao
   end
 
   def disc_number
-    (@path.disc_number ||
-     @id3.disc_number ||
+    (@id3.disc_number ||
+     @path.disc_number ||
      1).to_i
   end
   
@@ -75,5 +75,9 @@ class TrackDao
   
   def musicbrainz_album_status 
     return @id3.musicbrainz_album_status
+  end
+  
+  def musicbrainz_album_release_country
+    return @id3.musicbrainz_album_release_country
   end
 end

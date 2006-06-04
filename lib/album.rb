@@ -3,7 +3,7 @@ class Album
   attr_accessor :discs, :number_of_discs
   attr_accessor :genre, :release_date, :compilation, :mixer
   attr_accessor :musicbrainz_album_id, :musicbrainz_album_artist_id
-  attr_accessor :musicbrainz_album_type, :musicbrainz_album_status
+  attr_accessor :musicbrainz_album_type, :musicbrainz_album_status, :musicbrainz_album_release_country
   
   def initialize
     @discs = []

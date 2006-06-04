@@ -3,6 +3,8 @@
 $:.unshift(File.join(File.dirname(__FILE__), '../lib'))
 $:.unshift(File.join(File.dirname(__FILE__), '../../mp3info/lib'))
 
+require 'yaml'
+
 require 'path_utils'
 require 'mp3info'
 
@@ -75,6 +77,7 @@ source_mp3s.each do |source_file|
   
   File.delete(target_id3_intermediate)
   
-  saved_tag = Mp3Info.new(target_id3_final)
-  puts saved_tag.to_s
+  saved_mp3 = Mp3Info.new(target_id3_final)
+  puts saved_mp3.to_s
+  puts YAML.dump(saved_mp3.tag2)
 end

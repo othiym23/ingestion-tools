@@ -135,6 +135,40 @@ class AlbumTest < Test::Unit::TestCase
     assert_equal 'official', album.musicbrainz_album_status
   end
   
+  def test_totally_confused_album
+    albums = load_albums("Artist Of Confusion/Album Of Confusion*/*.mp3")
+
+    assert_equal 5, albums.size
+    
+    track_list = albums.collect{|album| album.discs.compact.collect{|disc| disc.tracks}}.flatten.compact
+    assert_equal 6, track_list.size
+    
+    zf = track_list.select { |track| 'Charm Aliso' == track.name }
+    assert_equal 1, zf.size, "Should only find one track."
+    assert_equal 3, zf.first.disc.number, ":z*f: show up on third disc despite filename cuz of ID3v2 tag."
+    
+    ijctsily = track_list.select { |track| 'I Just Called To Say I Love You' == track.name }
+    assert_equal 2, ijctsily.first.disc.number, "Stevie's on disc 2 because there's no disc info in his tag."
+  end
+  
+  def test_dispersed_album
+    albums = load_albums("Artist Of Dispersion/Dispersed disc*/*.mp3")
+
+    assert_equal 1, albums.size
+    album = albums.first
+    
+    assert_equal 1, album.number_of_discs
+    assert_equal 1, album.number_of_discs_loaded
+    
+    assert_equal 14, album.number_of_tracks
+    assert_equal 14, album.number_of_tracks_loaded
+    
+    assert_equal "324", album.artist_name
+
+    track_list = albums.collect{|album| album.discs.compact.collect{|disc| disc.tracks}}.flatten.compact
+    assert !track_list.detect { |track| '324' != track.artist_name }
+  end
+  
   private
   
   def load_albums(path)

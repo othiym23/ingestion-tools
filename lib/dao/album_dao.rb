@@ -15,6 +15,7 @@ class AlbumDao
       if albums[album_name].nil?
         new_album = Album.new
         new_album.name = album_name
+        new_album.number_of_discs = track_dao.number_of_discs_in_set
         albums[album_name] = new_album
       end
       album = albums[album_name]
@@ -22,6 +23,7 @@ class AlbumDao
       album.musicbrainz_album_id = track_dao.musicbrainz_album_id if track_dao.musicbrainz_album_id
       album.musicbrainz_album_type = track_dao.musicbrainz_album_type if track_dao.musicbrainz_album_type
       album.musicbrainz_album_status = track_dao.musicbrainz_album_status if track_dao.musicbrainz_album_status
+      album.musicbrainz_album_release_country = track_dao.musicbrainz_album_release_country if track_dao.musicbrainz_album_release_country
       
       disc_number = track_dao.disc_number
       if album.discs[disc_number].nil?
@@ -29,6 +31,7 @@ class AlbumDao
         new_disc.number = disc_number
         album.discs[disc_number] = new_disc
         new_disc.album = album
+        new_disc.number_of_tracks = track_dao.number_of_tracks_on_disc
       end
       disc = album.discs[disc_number]
       track.disc = disc
@@ -40,6 +43,7 @@ class AlbumDao
       artists = []
       genres = []
       years = []
+      musicbrainz_artist_ids = []
       
       album.set_mixer!
       album.set_encoder_from_comments!
@@ -50,6 +54,7 @@ class AlbumDao
           artists << track.artist_name
           genres << track.genre
           years << track.release_date
+          musicbrainz_artist_ids << track.musicbrainz_artist_id
         end
       end
       
@@ -71,6 +76,12 @@ class AlbumDao
         album.release_date = years.compact.first
       else
         album.release_date = years.compact.uniq.sort.last
+      end
+      
+      if 1 == musicbrainz_artist_ids.compact.uniq.size &&
+        (album.musicbrainz_album_artist_id.nil? ||
+         '' == album.musicbrainz_album_artist_id)
+        album.musicbrainz_album_artist_id = musicbrainz_artist_ids.compact.uniq.first
       end
     end
     

@@ -42,15 +42,29 @@ def display_album(album)
       out << "#{track.artist_name} - " if track.artist_name != album.artist_name
       out << "#{track.name}"
       puts out
-      puts "      Featured: #{track.featured_artists.join(', ')}" if track.featured_artists.size > 0
-      puts "      Remix: #{track.remix}" if track.remix && track.remix != ''
-      puts "      Genre: #{track.genre}" if track.genre && track.genre != album.genre
-      puts "      Comments: [#{comments}]" if comments != ''
-      puts "      Release date: #{track.release_date}" if track.release_date && track.release_date != album.release_date
+      puts "                     Featured: #{track.featured_artists.join(', ')}" if track.featured_artists.size > 0
+      puts "                        Remix: #{track.remix}" if track.remix && track.remix != ''
+      puts "                        Genre: #{track.genre}" if track.genre && track.genre != album.genre
+      puts "                     Comments: [#{comments}]" if comments != ''
+      puts "                 Release date: #{track.release_date}" if track.release_date && track.release_date != album.release_date
+      puts "       Musicbrainz track UUID: #{track.unique_id}" if track.unique_id && track.unique_id != ''
+      puts "      Musicbrainz artist UUID: #{track.musicbrainz_artist_id}" if track.musicbrainz_artist_id && 
+                                                                            track.musicbrainz_artist_id != '' &&
+                                                                            track.musicbrainz_artist_id != album.musicbrainz_album_artist_id
       encoders << track.encoder if track.encoder.size > 0
     end
   end
   
+  if album.musicbrainz_album_id || album.musicbrainz_album_artist_id ||
+     album.musicbrainz_album_type || album.musicbrainz_album_status
+    puts "\nMusicbrainz album info:"
+    puts "        artist UUID: #{album.musicbrainz_album_artist_id}" if album.musicbrainz_album_artist_id && '' != album.musicbrainz_album_artist_id
+    puts "         album UUID: #{album.musicbrainz_album_id}" if album.musicbrainz_album_id
+    puts "    release country: #{album.musicbrainz_album_release_country}" if album.musicbrainz_album_release_country
+    puts "             status: #{album.musicbrainz_album_status}" if album.musicbrainz_album_status
+    puts "               type: #{album.musicbrainz_album_type}" if album.musicbrainz_album_type
+  end
+
   encoders = encoders.compact.uniq
   encoders << "::AOAIOXXYSZ:: encoding tools, v1"
   raw_encoder = encoders.join("\n           ")
@@ -66,16 +80,17 @@ unless PathUtils.album_ingested?(ARCHIVE_BASE, source_directory)
   source_audio = Dir.glob("#{source_directory + File::SEPARATOR}**#{File::SEPARATOR}*.mp3")
   
   albums = AlbumDao.load_albums_from_paths(source_audio)
-
-  albums.each do |album|
+  
+  # albums.sort { |first,second| first.artist_name + first.name <=> second.artist_name + second.name }.each do |album|
+  #   puts "#{album.artist_name}: #{album.name}"
+  # end
+  
+  albums.sort { |first,second| first.artist_name + first.name <=> second.artist_name + second.name }.each do |album|
     display_album(album)
   end
 
-  # TODO: display album metadata
   # TODO: correct album metadata
-  # TODO: flag and correct unmarked compilations
   # TODO: fetch Musicbrainz annotations from server
-  # TODO: flag and remove ID3v1 tag
   # TODO: safely save changed tags to disk
   # TODO: safely move corrected files into place with correct name
   # TODO: safely remove empty directories
