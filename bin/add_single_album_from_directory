@@ -1,76 +1,13 @@
 #!/usr/bin/env ruby
-$:.unshift(File.join(File.dirname(__FILE__), '../lib'))
+script_path = __FILE__
+script_path = File.readlink(script_path) if File.symlink?(script_path)
+$:.unshift(File.join(File.dirname(script_path), '../lib'))
 
+require 'yaml'
 require 'path_utils'
 require 'dao/album_dao'
 
 ARCHIVE_BASE = '/data/music/mp3'
-
-# TODO: move this into the track class
-def format_comments(comments)
-  comment_string = ''
-  if Array == comments.class
-    consolidated = comments.uniq
-    if consolidated.size == 1
-      comment_string = consolidated [0]
-    else
-      comment_string = consolidated.join(', ')
-    end
-  else
-    comment_string = comments if comments
-  end
-  
-  if comment_string =~ /^Track \d+$/
-    return ''
-  else
-    return comment_string
-  end
-end
-
-def display_album(album)
-  encoders = []
-  
-  puts "[#{album.release_date}] #{album.artist_name}: #{album.name} (#{album.genre})"
-  puts "    Mixed by #{album.mixer}" if album.mixer
-  puts
-  
-  album.discs.compact.each do |disc|
-    puts "  Disc #{disc.number}:" if album.discs.compact.size > 1
-    disc.tracks.sort { |first,second| first.sequence <=> second.sequence }.each do |track|
-      comments =  format_comments(track.comment)
-      out = "    #{disc.number}.#{track.sequence}: "
-      out << "#{track.artist_name} - " if track.artist_name != album.artist_name
-      out << "#{track.name}"
-      puts out
-      puts "                     Featured: #{track.featured_artists.join(', ')}" if track.featured_artists.size > 0
-      puts "                        Remix: #{track.remix}" if track.remix && track.remix != ''
-      puts "                        Genre: #{track.genre}" if track.genre && track.genre != album.genre
-      puts "                     Comments: [#{comments}]" if comments != ''
-      puts "                 Release date: #{track.release_date}" if track.release_date && track.release_date != album.release_date
-      puts "       Musicbrainz track UUID: #{track.unique_id}" if track.unique_id && track.unique_id != ''
-      puts "      Musicbrainz artist UUID: #{track.musicbrainz_artist_id}" if track.musicbrainz_artist_id && 
-                                                                            track.musicbrainz_artist_id != '' &&
-                                                                            track.musicbrainz_artist_id != album.musicbrainz_album_artist_id
-      encoders << track.encoder if track.encoder.size > 0
-    end
-  end
-  
-  if album.musicbrainz_album_id || album.musicbrainz_album_artist_id ||
-     album.musicbrainz_album_type || album.musicbrainz_album_status
-    puts "\nMusicbrainz album info:"
-    puts "        artist UUID: #{album.musicbrainz_album_artist_id}" if album.musicbrainz_album_artist_id && '' != album.musicbrainz_album_artist_id
-    puts "         album UUID: #{album.musicbrainz_album_id}" if album.musicbrainz_album_id
-    puts "    release country: #{album.musicbrainz_album_release_country}" if album.musicbrainz_album_release_country
-    puts "             status: #{album.musicbrainz_album_status}" if album.musicbrainz_album_status
-    puts "               type: #{album.musicbrainz_album_type}" if album.musicbrainz_album_type
-  end
-
-  encoders = encoders.compact.uniq
-  encoders << "::AOAIOXXYSZ:: encoding tools, v1"
-  raw_encoder = encoders.join("\n           ")
-  puts "\nEncoded by #{raw_encoder}" if raw_encoder && raw_encoder != ''
-  puts; puts
-end
 
 source_directory = File.expand_path(ARGV[0])
 raise IOError.new("Path #{source_directory} does not exist!") unless File.exists?(source_directory)
@@ -81,12 +18,9 @@ unless PathUtils.album_ingested?(ARCHIVE_BASE, source_directory)
   
   albums = AlbumDao.load_albums_from_paths(source_audio)
   
-  # albums.sort { |first,second| first.artist_name + first.name <=> second.artist_name + second.name }.each do |album|
-  #   puts "#{album.artist_name}: #{album.name}"
-  # end
-  
   albums.sort { |first,second| first.artist_name + first.name <=> second.artist_name + second.name }.each do |album|
-    display_album(album)
+    puts album.display_formatted
+    puts YAML.dump(album)
   end
 
   # TODO: correct album metadata

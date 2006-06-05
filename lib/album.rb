@@ -76,4 +76,67 @@ class Album
       end
     end
   end
+  
+  def display_formatted
+    encoders = []
+    formatted_album = ''
+
+    formatted_album << "[#{release_date}] #{artist_name}: #{name} (#{genre})\n"
+    formatted_album << "    Mixed by #{mixer}\n" if mixer
+    formatted_album << "\n"
+
+    discs.compact.each do |disc|
+      formatted_album << "  Disc #{disc.number}:" if discs.compact.size > 1
+      disc.tracks.sort { |first,second| first.sequence <=> second.sequence }.each do |track|
+        comments =  format_comments(track.comment)
+        out = "    #{disc.number}.#{track.sequence}: "
+        out << "#{track.artist_name} - " if track.artist_name != artist_name
+        out << "#{track.name}\n"
+        formatted_album << out
+        formatted_album << "                     Featured: #{track.featured_artists.join(', ')}\n" if track.featured_artists.size > 0
+        formatted_album << "                        Remix: #{track.remix}\n" if track.remix && track.remix != ''
+        formatted_album << "                        Genre: #{track.genre}\n" if track.genre && track.genre != genre
+        formatted_album << "                     Comments: [#{comments}]\n" if comments && comments != ''
+        formatted_album << "                 Release date: #{track.release_date}\n" if track.release_date && track.release_date != release_date
+        formatted_album << "       Musicbrainz track UUID: #{track.unique_id}\n" if track.unique_id && track.unique_id != ''
+        formatted_album << "      Musicbrainz artist UUID: #{track.musicbrainz_artist_id}\n" if track.musicbrainz_artist_id && 
+                                                                                                track.musicbrainz_artist_id != '' &&
+                                                                                                track.musicbrainz_artist_id != musicbrainz_album_artist_id
+        encoders << track.encoder if track.encoder.size > 0
+      end
+    end
+
+    if musicbrainz_album_id || musicbrainz_album_artist_id ||
+       musicbrainz_album_type || musicbrainz_album_status
+      formatted_album << "\nMusicbrainz album info:\n"
+      formatted_album << "        artist UUID: #{musicbrainz_album_artist_id}\n" if musicbrainz_album_artist_id && '' != musicbrainz_album_artist_id
+      formatted_album << "         album UUID: #{musicbrainz_album_id}\n" if musicbrainz_album_id
+      formatted_album << "    release country: #{musicbrainz_album_release_country}\n" if musicbrainz_album_release_country
+      formatted_album << "             status: #{musicbrainz_album_status}\n" if musicbrainz_album_status
+      formatted_album << "               type: #{musicbrainz_album_type}\n" if musicbrainz_album_type
+    end
+
+    encoders = encoders.flatten.compact.uniq
+    raw_encoder = encoders.join("\n           ")
+    formatted_album << "\nEncoded by #{raw_encoder}\n\n" if raw_encoder && raw_encoder != ''
+    
+    formatted_album
+  end
+  
+  private
+  
+  # TODO: move this into the track class
+  def format_comments(comments)
+    comment_string = ''
+    if Array == comments.class
+      consolidated = comments.uniq
+      if consolidated.size == 1
+        comment_string = consolidated[0]
+      else
+        comment_string = consolidated.join(', ')
+      end
+    else
+      comment_string = comments if comments && '' != comments
+    end
+  end
 end

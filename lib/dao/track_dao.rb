@@ -36,6 +36,8 @@ class TrackDao
     
     track.set_remix!
     track.set_featured_artists!
+    track.canonicalize_encoders!
+    track.canonicalize_comments!
     
     track
   end

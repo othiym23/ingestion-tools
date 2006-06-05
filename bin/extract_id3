@@ -1,12 +1,12 @@
 #!/usr/bin/env ruby
-
-$:.unshift(File.join(File.dirname(__FILE__), '../lib'))
-$:.unshift(File.join(File.dirname(__FILE__), '../../mp3info/lib'))
+script_path = __FILE__
+script_path = File.readlink(script_path) if File.symlink?(script_path)
+$:.unshift(File.join(File.dirname(script_path), '../lib'))
+$:.unshift(File.join(File.dirname(script_path), '../../mp3info/lib'))
 
 require 'yaml'
-
-require 'path_utils'
 require 'mp3info'
+require 'path_utils'
 
 def get_syncsafe(file)
   (file.getc << 21) + (file.getc << 14) + (file.getc << 7) + file.getc

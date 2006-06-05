@@ -1,0 +1,117 @@
+#!/usr/bin/env ruby
+script_path = __FILE__
+script_path = File.readlink(script_path) if File.symlink?(script_path)
+$:.unshift(File.join(File.dirname(script_path), '../lib'))
+
+require 'path_utils'
+require 'dao/album_dao'
+require 'yaml'
+
+ARCHIVE_BASE = '/data/music/mp3'
+PENDING_BASE = '/data/music/holding/pending'
+
+STDOUT.sync = true
+source_directory = File.expand_path(PENDING_BASE)
+raise IOError.new("Path #{source_directory} does not exist!") unless File.exists?(source_directory)
+
+at_exit { puts "\nSeeya!" }
+
+def narrow_albums(albums, search_term)
+  albums.select do |album|
+    album_name = "#{album.artist_name}: #{album.name}"
+
+    puts "Matched #{search_term} as album artist name #{album.artist_name} on #{album_name}" if album.artist_name.match(/#{search_term}/i)
+    puts "Matched #{search_term} as album name #{album.name} on #{album_name}" if album.name.match(/#{search_term}/i)
+
+    album.artist_name.match(/#{search_term}/i) ||
+    album.name.match(/#{search_term}/i) ||
+    album.discs.compact.detect do |disc|
+      disc.tracks.detect do |track|
+        puts "Matched #{search_term} as track artist name #{track.artist_name} on #{album_name}" if track.artist_name.match(/#{search_term}/i)
+        puts "Matched #{search_term} as track name #{track.name} on #{album_name}" if track.name.match(/#{search_term}/i)
+
+        track.artist_name.match(/#{search_term}/i) ||
+        track.name.match(/#{search_term}/i)
+      end
+    end
+  end
+end
+
+def process_individual_album(album)
+  loop do
+    print "action ([d]isplay, [Y]AML, [q]uit): "
+    exit 0 unless action = STDIN.gets
+    action.chomp!
+    puts
+
+    case action
+    when 'Y'
+      puts YAML.dump(album)
+    when 'd'
+      puts album.display_formatted
+    when 'q'
+      return
+    else
+      puts "INVALID"
+    end
+  end
+end
+
+def process_all_albums(albums)
+  refined_albums = albums
+
+  loop do
+    if refined_albums.size > 24
+      puts "\nThere are #{refined_albums.size} albums left to deal with, which is too many to display."
+      puts "Please reduce the size of the list by entering an artist or album name.\n"
+
+      print "artist or album name: "
+      exit 0 unless search_term = STDIN.gets
+      search_term.chomp!
+
+      refined_albums = narrow_albums(refined_albums, search_term)
+    elsif 1 == refined_albums.size
+      puts "\n\n"
+      process_individual_album(refined_albums.first)
+      refined_albums = albums
+    elsif 0 == refined_albums.size
+      puts "No albums matched your query or there are no albums remaining to process.\n\n"
+      refined_albums = albums
+    else
+      puts "\nThere are #{refined_albums.size} albums remaining in the list.\n\n"
+
+      refined_albums = refined_albums.sort do |first,second|
+        first.artist_name + first.name <=> second.artist_name + second.name
+      end
+
+      counter = 0
+      refined_albums.each do |album|
+        puts "#{counter = counter + 1}. #{album.artist_name}: #{album.name}"
+      end
+
+      puts "\nSelect an album from the above list for processing."
+
+      print "\nalbum number (r to reset list): "
+      break unless album_number = STDIN.gets
+      album_number.chomp!
+      puts
+      
+      case album_number
+      when 'r'
+        refined_albums = albums
+      else
+        process_individual_album(refined_albums[album_number.to_i - 1])
+      end
+    end
+  end
+end
+
+puts "::AOAIOXXYSZ:: music archive management system, v1"
+puts "  e-mail Forrest (ogd@aoaioxxysz.net) if anything weird happens."
+print "\nLoading albums, which takes a while (so be patient!)..."
+
+source_audio = Dir.glob("#{source_directory + File::SEPARATOR}**#{File::SEPARATOR}*.mp3")
+albums = AlbumDao.load_albums_from_paths(source_audio)
+
+puts"#{albums.size} albums loaded\n\n"
+process_all_albums(albums)

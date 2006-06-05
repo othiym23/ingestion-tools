@@ -65,4 +65,28 @@ class Track
       @featured_artists << patterns[3]
     end
   end
+  
+  def canonicalize_encoders!
+     if @encoder
+       encoder_list = @encoder.compact.uniq.flatten
+       
+       encoder_list.collect! do |encoder|
+         if 'Exact Audio Copy   (Secure mode)' == encoder
+           'Exact Audio Copy (secure mode)'
+         end
+       end
+       
+       if 1 == encoder_list.size && 'Exact Audio Copy (secure mode)' == encoder_list.first
+         encoder_list << 'lame 3.96.1 --alt-preset standard'
+       end
+       
+       encoder_list << "::AOAIOXXYSZ:: encoding tools, v1"
+       
+       @encoder = encoder_list
+    end
+  end
+  
+  def canonicalize_comments!
+    @comment = nil if @comment && @comment.match(/^Track \d+$/)
+  end
 end
