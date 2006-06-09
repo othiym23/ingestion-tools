@@ -61,16 +61,6 @@ class Mp3InfoFactory
   def musicbrainz_album_release_country=(value)
     musicbrainz_setter("MusicBrainz Album Release Country", value)
   end
-  
-  protected
-  
-  def musicbrainz_getter(property_name)
-    # this is a stub
-  end
-  
-  def musicbrainz_setter(property_name, value)
-    # this is a stub
-  end
 end
 
 class Mp3InfoId3v24Tag < Mp3InfoFactory
