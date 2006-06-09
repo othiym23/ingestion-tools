@@ -1,7 +1,8 @@
 #!/usr/bin/env ruby
 script_path = __FILE__
 script_path = File.readlink(script_path) if File.symlink?(script_path)
-$:.unshift(File.join(File.dirname(script_path), '../lib'))
+
+$: << File.join(File.dirname(script_path), '../lib')
 
 require 'yaml'
 require 'path_utils'

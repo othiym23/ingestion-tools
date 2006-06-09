@@ -1,5 +1,4 @@
-$:.unshift(File.expand_path(File.join(File.dirname(__FILE__), '../../mp3info/lib')))
-$:.unshift(File.expand_path(File.join(File.dirname(__FILE__), '.')))
+$: << File.expand_path(File.join(File.dirname(__FILE__), '../../mp3info/lib'))
 
 require 'mp3info'
 require 'adaptor/mp3info_factory'
