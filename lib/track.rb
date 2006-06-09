@@ -60,10 +60,42 @@ class Track
       @featured_artists << patterns[3]
     end
 
-    if patterns = @artist_name.match(/^(.*) \([Ff](ea)?t. (.*)\)$/)
+    if patterns = @name.match(/^(.*) [Ff](ea)?t\.? (.*)$/)
+      @name = patterns[1]
+      @featured_artists << patterns[3]
+    end
+
+    if patterns = @name.match(/^(.*) \([Ff]eaturing (.*)\)(.*)$/)
+      @name = patterns[1] + patterns[3]
+      @featured_artists << patterns[2]
+    end
+
+    if patterns = @name.match(/^(.*) [Ff]eaturing (.*)$/)
+      @name = patterns[1]
+      @featured_artists << patterns[2]
+    end
+
+    if patterns = @artist_name.match(/^(.*) \([Ff](ea)?t.? (.*)\)$/)
       @artist_name = patterns[1]
       @featured_artists << patterns[3]
     end
+
+    if patterns = @artist_name.match(/^(.*) [Ff](ea)?t.? (.*)$/)
+      @artist_name = patterns[1]
+      @featured_artists << patterns[3]
+    end
+
+    if patterns = @artist_name.match(/^(.*) [Ww]ith (.*)$/)
+      @artist_name = patterns[1]
+      @featured_artists << patterns[2]
+    end
+    
+    @featured_artists.collect! { |string| string.split(/, ?/) }
+    @featured_artists.flatten!
+    @featured_artists.collect! { |string| string.split(/ ?& ?/) }
+    @featured_artists.flatten!
+    @featured_artists.collect! { |string| string.split(/ and /) }
+    @featured_artists.flatten!
   end
   
   def canonicalize_encoders!
