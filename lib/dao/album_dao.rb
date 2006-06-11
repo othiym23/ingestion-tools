@@ -95,10 +95,11 @@ class AlbumDao
         album.genre = genres.first
       else
         popularity_contest = []
-        genres.compact.uniq.each do |genre|
-          popularity_contest << [genre, genres.size - (genres - genre).size]
+        genres.compact!
+        genres.uniq.each do |genre|
+          popularity_contest << [genre, genres.size - (genres - [genre]).size]
         end
-        album.genre = popularity_contest.sort{|l,r| l[1] <=> r[1]}.last[0]
+        album.genre = popularity_contest.sort{|l,r| l[1] <=> r[1]}.last[0] if popularity_contest.size > 0
       end
       
       # HEURISTIC: promote track-level release year to album level, choosing

@@ -182,13 +182,17 @@ class Track
   
   private
   
-  # HEURISTIC: my personal style is to have every title word indiscriminately
-  # capitalized *unless* it's the word "remix", "mix", "version" or "live".
+  # HEURISTIC: my personal style is to capitalize every remix word *unless*
+  # it's one of "mix", "remix", "version",  "edit", "short", "long", "live",
+  # "original", "instrumental", "vocal", or "dub"
   def capitalize_remix_name(remix_name)
-    remix = StringUtils.mixed_case(remix_name)
-    remix = "live" if remix == "Live"
-    remix.gsub!(/ ?Mix\Z/, ' mix')
-    remix.gsub!(/ ?Remix\Z/, ' remix')
-    remix.gsub(/ ?Version\Z/, ' version')
+    if remix_name
+      remix = StringUtils.mixed_case(remix_name)
+      remix.gsub!(/(\A|\s)(Mix|Remix|Version|Edit)\b/) {|string| string.downcase}
+      remix.gsub!(/(\A|\s)(Short|Long|Extended)\b/) {|string| string.downcase}
+      remix.gsub!(/(\A|\s)(Live|Original|Instrumental|Vocal|Dub)\b/) {|string| string.downcase}
+    end
+    
+    remix
   end
 end

@@ -217,8 +217,8 @@ END
     assert_equal sample_output, album.display_formatted
   end
   
-    def test_album_display_simple
-      sample_output =<<END
+  def test_album_display_simple
+    sample_output =<<END
 [2006] Razor X Productions: Killing Sound (Dancehall)
 
   Disc 1:
@@ -245,10 +245,83 @@ END
     2.10: Don't Version
 END
 
-      albums = load_albums("Razor X Productions/*/*.mp3")
-      album = albums.first
-      assert_equal sample_output, album.display_formatted(true)
-    end
+    albums = load_albums("Razor X Productions/*/*.mp3")
+    album = albums.first
+    assert_equal sample_output, album.display_formatted(true)
+  end
+
+  def test_album_display_simple_no_genre
+    sample_output =<<END
+[1995] RAC: Doublejointed
+
+    1: Doublejointed (2)
+    2: Distance (Remake)
+    3: Nine
+    4: Root
+END
+
+    albums = load_albums("RAC/Double Jointed/*.mp3")
+    album = albums.first
+    assert_equal sample_output, album.display_formatted(true)
+  end
+
+  def test_album_capitalization
+    sample_output =<<END
+[2005] Dean Gray: American Edit (Mashup)
+
+    1: American Jesus
+    2: Dr. Who On Holiday
+    3: Boulevard Of Broken Songs
+    4: The Bad Homecoming (Waiting)
+    5: St Jimmy The Prankster
+    6: Novocaine Rhapsody
+    7: Impossible Rebel
+    8: Ashanti's Letterbomb
+    9: Greenday Massacre
+    10: Whatsername (Susanna Hoffs)
+    11: Boulevard Of Broken Songs Dance
+END
+
+    albums = load_albums("Dean Gray/American Edit/*.mp3")
+    album = albums.first
+    assert_equal 'Boulevard Of Broken Songs', album.tracks[2].name
+    assert_equal 'Boulevard Of Broken Songs Dance', album.tracks[10].name
+    assert_equal sample_output, album.display_formatted(true)
+  end
+
+  def test_album_capitalization_pathological
+    sample_output =<<END
+[2005] Various Artists: The Celluloid Years: 12"s And MORE... (Hip-Hop)
+
+  Disc 1:
+    1.1: Futura 2000 - Escapades Of Futura 2000 (feat. The Clash) [original 12" version]
+    1.2: Time Zone - The Wildstyle Extended [original 12" version]
+    1.3: Grandmixer D. ST - Cuts It Up [original 12" version]
+    1.4: Deadline - Makossa Rock [original 12" version]
+    1.5: Last Poets - Get Movin
+    1.6: D. ST - Why Is It Fresh? [original 12" Megamix 2 version]
+    1.7: Time Zone - Wildstyle [Francois Kevorkian & Paul Groucho Smykle remix - original 12" version]
+    1.8: Lightning Rod & Jimi Hendrix - Doriella Du Fontaine [original 12" version]
+    1.9: Shango - Zulu Groove [original 12" version]
+  Disc 2:
+    2.1: Fab Five Freddy - Change The Beat [original 12" version]
+    2.2: Fab Five Freddy - Change The Beat [original 12" French Rap version]
+    2.3: Tribe 2 - What I Like [original 12" French dub version]
+    2.4: Shango - Shango Message [original 12" instrumental edit]
+    2.5: Manu Dibango - Pata Piya [original 12" version]
+    2.6: Grandmixer D. ST & Jalal - Mean Machine [original 12" version]
+    2.7: Grandmixer D. ST - Home Of Hip Hop [original 12" version]
+    2.8: Grandmixer D. ST - Home Of Hip Hop [original 12" dub version]
+    2.9: Time Zone - World Destruction (feat. Afrika Bambaaataa, John Lydon) [original 12" version - Bill Laswell remix]
+    2.10: Manu Dibango - Abele Dance [original 12" version]
+    2.11: Grandmixer D. ST - Crazy Cuts [original 12" long version]
+    2.12: Grandmixer D. ST - Crazy Cuts [original 12" dub version]
+END
+
+    albums = load_albums("Various Artists/The Celluloid Years- 12's And MORE...*/*.mp3")
+    album = albums.first
+    assert_equal sample_output, album.display_formatted(true)
+  end
 
   def test_capitalization_of_titles
     album = Album.new
@@ -276,6 +349,24 @@ END
     assert_equal 'Crow, The', album.sort_order
   end
   
+  def test_album_mixed_genres
+    albums = load_albums("Various Artists/Cracker Jams/*.mp3")
+
+    album = albums.first
+    assert_equal true, album.compilation
+    assert_equal 'Various Artists', album.artist_name
+    assert_equal 'Southern Rock', album.genre
+  end
+  
+  def test_album_missing_genres
+    albums = load_albums("RAC/Double Jointed/*.mp3")
+
+    album = albums.first
+    assert_equal 'RAC', album.artist_name
+    assert_equal 'Doublejointed', album.name
+    assert_equal nil, album.genre
+  end
+  
   private
   
   def load_albums(path)
@@ -287,4 +378,3 @@ END
     Dir.glob(File.join(File.expand_path('../../mp3info/sample-metadata'), path))
   end
 end
-

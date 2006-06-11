@@ -25,14 +25,14 @@ class TrackTest < Test::Unit::TestCase
     track = load_track('Aphex Twin/Ventolin/Aphex Twin - Ventolin - 01 - Ventolin Salbutamol Mix.mp3')
 
     assert_equal 'Ventolin', track.name
-    assert_equal 'Salbutamol Mix', track.remix, "Salbutamol Mix should be removed from track name {#{track.name}}"
+    assert_equal 'Salbutamol mix', track.remix, "Salbutamol mix should be removed from track name {#{track.name}}"
   end
   
   def test_nonstandard_remix_parsing
     track = load_track('Aphex Twin/Richard D James Album/Aphex Twin - Richard D James Album - 13 - GirlBoy Song 18 Snarerush Mix.mp3')
 
     assert_equal 'Girl/Boy Song', track.name
-    assert_equal '£18 Snarerush Mix', track.remix, "£18 Snarerush Mix should be removed from track name {#{track.name}}"
+    assert_equal '£18 Snarerush mix', track.remix, "£18 Snarerush mix should be removed from track name {#{track.name}}"
     
     track = load_track('Various Artists/Wonka Beats/Aquastep - Wonka Beats - 01 - Oempa Loempa (original).mp3')
 

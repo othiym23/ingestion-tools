@@ -31,6 +31,7 @@ class TrackDao
     
     @track.set_remix!
     @track.set_featured_artists!
+    @track.capitalize_names!
     @track.set_sort_order!
     @track.canonicalize_encoders!
     @track.canonicalize_comments!

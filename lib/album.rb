@@ -25,7 +25,10 @@ class Album
   end
   
   def tracks
-    @discs.compact.collect {|disc| disc.tracks}.flatten
+    @discs.compact.collect{|disc| disc.tracks}.flatten.sort do |l,r|
+      disc_equality = l.disc.number <=> r.disc.number
+      disc_equality == 0 ? l.sequence <=> r.sequence : disc_equality
+    end
   end
   
   # HEURISTIC: this function serves a VERY SPECIFIC function, which is swapping
@@ -106,14 +109,19 @@ class Album
     encoders = []
     formatted_album = ''
 
-    formatted_album << "[#{release_date}] #{artist_name}: #{name} (#{genre})\n"
+    formatted_album << "[#{release_date}] " if release_date
+    formatted_album << "#{artist_name}: #{name}"
+    formatted_album << " (#{genre})" if genre
+    formatted_album << "\n"
     formatted_album << "    Mixed by #{mixer}\n" if mixer
     formatted_album << "\n"
 
     discs.compact.each do |disc|
       formatted_album << "  Disc #{disc.number}:\n" if discs.compact.size > 1
       disc.tracks.sort { |first,second| first.sequence <=> second.sequence }.each do |track|
-        out = "    #{disc.number}.#{track.sequence}: "
+        out = '    '
+        out << "#{disc.number}." if discs.compact.size > 1
+        out << "#{track.sequence}: "
         out << "#{track.artist_name} - " if track.artist_name != artist_name
 
         unless simple
@@ -128,6 +136,8 @@ class Album
           comments =  track.format_comments
 
           track_attributes = []
+          track_attributes << ["Artist sort", track.artist_sort_order] if track.artist_sort_order
+          track_attributes << ["Sort", track.sort_order] if track.sort_order
           track_attributes << ["Featured", track.featured_artists.join(', ')] if track.featured_artists.size > 0
           track_attributes << ["Remix", track.remix] if track.remix && track.remix != ''
           track_attributes << ["Genre", track.genre] if track.genre && track.genre != genre
@@ -135,8 +145,8 @@ class Album
           track_attributes << ["Release date", track.release_date] if track.release_date && track.release_date != release_date
           track_attributes << ["Musicbrainz track UUID", track.unique_id] if track.unique_id && track.unique_id != ''
           track_attributes << ["Musicbrainz artist UUID", track.musicbrainz_artist_id] if track.musicbrainz_artist_id && 
-                                                                                                  track.musicbrainz_artist_id != '' &&
-                                                                                                  track.musicbrainz_artist_id != musicbrainz_album_artist_id
+                                                                                          track.musicbrainz_artist_id != '' &&
+                                                                                          track.musicbrainz_artist_id != musicbrainz_album_artist_id
           formatted_album << justify_attribute_list(track_attributes, 6)
 
           encoders << track.encoder if track.encoder.size > 0
