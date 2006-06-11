@@ -1,22 +1,40 @@
- o cache pending album list in holding database
- o write periodic task to rebuild pending album cache
- o write periodic task to connect to MusicBrainz and try to match unmatched tracks
- o display and correct album metadata:
-   o canonicalize track, artist and album capitalization
-   o canonicalize track filename and rename to canonicalized standard
- o add simple album display
- o add random album processing
- o validate number of tracks in set vs number of tracks loaded
- o handle sort order from frames (TSOP in 2.4 / XSOP in 2.3)
- o collect comments and turn into encoder when one is missing
- o flag and correct unmarked compilations
- o flag presence of ID3v1 tag (deletion already handled)
- o split consolidated multi-disc albums back into their discs
- o safely save changed tags to disk
- o safely move corrected files into place with correct name
- o safely remove empty directories
- o prompt to compare two albums
- o prompt to replace and / or remove one of the two albums
- o fetch Musicbrainz annotations from server
- o match artists against archive and database
- o load list of genres from database and canonicalize if not direct match
+management console:
+* manage pending content:
+** cache pending album list in holding database
+** write periodic task to rebuild pending album cache
+** write periodic task to connect to MusicBrainz and try to match unmatched tracks
+** group tracks by artist directory + album name
+* add simple album display
+* validate number of tracks in set vs number of tracks loaded
+* add random album processing
+* flag unmarked compilations (correction already handled)
+* flag presence of ID3v1 tag (deletion already handled)
+* prompt to compare two albums
+* prompt to replace and / or remove one of the two albums
+* load list of genres from database and canonicalize if not direct match
+
+album ingestion:
+* handle sort order from frames (TSOP in 2.4 / XSOP in 2.3)
+* handle featured artists from frames
+* split consolidated multi-disc albums back into their discs
+* fetch Musicbrainz annotations from server
+* classical support:
+** add reading and writing of ID3v2 fields related to orchestral and
+   ensemble music (composer, conductor, soloists, ensembles)
+** ensure that genre matches contents
+
+heuristic metadata correction:
+* collect comments and turn into encoder when a fraction are missing
+  display and correct album metadata:
+** canonicalize track, artist and album capitalization
+** canonicalize track filename and rename to canonicalized standard
+* match artists against archive
+* match artists against database
+* correctly handle split albums with "Artist 1 / Artist 2" titles
+* improve encoder cattle-catcher to do something different with 
+  release codes (i.e. not sticking them on the encoder string)
+
+code quality:
+* document all heuristics used in code base
+* collect and / or remedy all inline TODOS
+* bump up coverage of core album ingestion framework

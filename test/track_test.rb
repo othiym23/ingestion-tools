@@ -78,7 +78,7 @@ class TrackTest < Test::Unit::TestCase
 
   def load_track(path)
     track_path = find_file(path)
-    TrackDao.new(track_path).load_track(track_path)
+    TrackDao.new(track_path).track
   end
 
   def find_file(path)

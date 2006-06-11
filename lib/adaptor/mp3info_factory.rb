@@ -113,7 +113,7 @@ class Mp3InfoId3v24Tag < Mp3InfoFactory
   end
   
   def genre=(value)
-    @tag.TCON
+    @tag.TCON = value
   end
   
   def compilation?
@@ -142,7 +142,7 @@ class Mp3InfoId3v24Tag < Mp3InfoFactory
   end
   
   def encoder
-    @tag.TENC
+    @tag.TSSE || @tag.TENC
   end
   
   def encoder=(value)
@@ -163,8 +163,8 @@ class Mp3InfoId3v24Tag < Mp3InfoFactory
   end
   
   def musicbrainz_track_id=(value)
-    @tag.UFI = value
-    @tag.UFI.namespace = 'http://musicbrainz.org'
+    @tag.UFID = value
+    @tag.UFID.namespace = 'http://musicbrainz.org'
   end
 
   protected
@@ -180,7 +180,7 @@ class Mp3InfoId3v24Tag < Mp3InfoFactory
   end
   
   def musicbrainz_setter(property_name, value)
-    txxx = ID3v2Frame.create_frame('TXXX', value)
+    txxx = ID3V24::Frame.create_frame('TXXX', value)
     txxx.description = property_name
 
     if @tag.TXXX

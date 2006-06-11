@@ -1,13 +1,22 @@
+require 'path_utils'
 require 'album'
 require 'disc'
 require 'dao/track_dao'
 
+class AlbumAlreadyExistsException < IOError; end
+
 class AlbumDao
+  attr_accessor :archive_root
+  
+  def initialize(archive_root)
+    @archive_root = archive_root
+  end
+  
   def AlbumDao.load_albums_from_paths(paths)
     albums = {}
     paths.each do |path|
       track_dao = TrackDao.new(path)
-      track = track_dao.load_track(path)
+      track = track_dao.track
 
       album_name = track_dao.album_name
       if albums[album_name].nil?
@@ -16,12 +25,14 @@ class AlbumDao
         new_album.number_of_discs = track_dao.number_of_discs_in_set
         albums[album_name] = new_album
       end
+
       album = albums[album_name]
       album.musicbrainz_album_artist_id = track_dao.musicbrainz_album_artist_id if track_dao.musicbrainz_album_artist_id
       album.musicbrainz_album_id = track_dao.musicbrainz_album_id if track_dao.musicbrainz_album_id
       album.musicbrainz_album_type = track_dao.musicbrainz_album_type if track_dao.musicbrainz_album_type
       album.musicbrainz_album_status = track_dao.musicbrainz_album_status if track_dao.musicbrainz_album_status
       album.musicbrainz_album_release_country = track_dao.musicbrainz_album_release_country if track_dao.musicbrainz_album_release_country
+      album.compilation = true if track_dao.compilation?
       
       disc_number = track_dao.disc_number
       if album.discs[disc_number].nil?
@@ -56,33 +67,125 @@ class AlbumDao
         end
       end
       
-      if 1 == artists.compact.uniq.size
-        album.artist_name = artists.first
-        album.compilation = false
+      # HEURISTIC: promote track-level artists to album level, finding any secret
+      # compilations to boot
+      #
+      # TODO: correctly handle split albums with "Artist 1 / Artist 2" titles
+      if album.compilation
+        if 1 == artists.compact.uniq.size
+          album.artist_name = artists.first
+          album.compilation = false
+        else
+          album.artist_name = 'Various Artists'
+        end
       else
-        album.artist_name = "Various Artists"
-        album.compilation = true
+        if 1 < artists.compact.uniq.size
+          album.artist_name = "Various Artists"
+          album.compilation = true
+        else
+          album.artist_name = artists.first
+        end
       end
       
+      # HEURISTIC: promote genres to album level, choosing the most frequent
+      # genre if there's more than one
       if 1 == genres.compact.uniq.size
         album.genre = genres.first
       else
-        album.genre = genres.compact.uniq.join(", ")
+        popularity_contest = []
+        genres.compact.uniq.each do |genre|
+          popularity_contest << [genre, genres.size - (genres - genre).size]
+        end
+        album.genre = popularity_contest.sort{|l,r| l[1] <=> r[1]}.last[0]
       end
       
+      # HEURISTIC: promote track-level release year to album level, choosing
+      # the latest date if there's a list
       if 1 == years.compact.uniq.size
         album.release_date = years.compact.first
       else
         album.release_date = years.compact.uniq.sort.last
       end
       
+      # HEURISTIC: promote track-level MusicBrainz data to album level
       if 1 == musicbrainz_artist_ids.compact.uniq.size &&
         (album.musicbrainz_album_artist_id.nil? ||
          '' == album.musicbrainz_album_artist_id)
         album.musicbrainz_album_artist_id = musicbrainz_artist_ids.compact.uniq.first
       end
+      
+      # HEURISTIC: albums coming out of most rippers are only set to have 1 disc
+      if !album.number_of_discs || (album.number_of_discs < album.number_of_discs_loaded)
+        album.number_of_discs = album.number_of_discs_loaded 
+      end
     end
     
     albums.values
+  end
+  
+  def archive_album(album)
+    if !already_in_archive?(album)
+      album.tracks.each do |track|
+        TrackDao.archive_mp3_from_track(@archive_root, track)
+      end
+      
+      remove_empty_paths(album.tracks.collect{|track| track.path})
+    else
+      raise AlbumAlreadyExistsException.new("#{album.artist_name}: #{album.name} is already in the archive")
+    end
+  end
+  
+  private
+  
+  def already_in_archive?(album)
+    raw_path_metadata = album.tracks.collect{|track| TrackPathMetadata.load_from_track(track)}.uniq
+    
+    raw_path_metadata.detect do |album_directory|
+      canonical_path = album_directory.canonical_path
+      dedisked_path = canonical_path.gsub(/ disc \d+/, '')
+      
+      PathUtils.album_ingested?(@archive_root, canonical_path) ||
+      PathUtils.album_ingested?(@archive_root, dedisked_path)
+    end
+  end
+
+  def remove_empty_paths(file_paths)
+    source_roots = []
+    album_dirs = []
+    artist_dirs = []
+    warnings = []
+
+    file_paths.compact.each do |file|
+      raise IOError.new("#{file} should have been moved!") if File.exists?(file)
+
+      path_stack = File.dirname(file).split(File::SEPARATOR)
+      album_dirs << File.join(path_stack[-2], path_stack.pop) # uses stack lookahead
+      artist_dirs << path_stack.pop
+      source_roots << File.join(path_stack)
+    end
+    
+    source_roots = source_roots.uniq
+    raise IOError.new("Holding directory mismatch for roots #{source_roots.join(", ")}!") if source_roots.size > 1
+    source_root = source_roots.first
+    
+    album_dirs.uniq.each do |directory|
+      full_path = File.join(source_root, directory)
+      leftovers = Dir.glob(File.join(full_path, '*'))
+      if 0 == leftovers.size
+        Dir.delete(full_path)
+      else
+        leftover_files = leftovers.collect { |file| file.basename }
+        warnings << "#{full_path} still contains #{leftovers.size} files: #{leftover_files.join(', ')}"
+      end
+    end
+    
+    artist_dirs.uniq.each do |directory|
+      full_path = File.join(source_root, directory)
+      if 0 == Dir.glob(File.join(full_path, '*')).size
+        Dir.delete(full_path)
+      end
+    end
+    
+    warnings
   end
 end

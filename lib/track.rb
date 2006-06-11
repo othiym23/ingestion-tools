@@ -99,12 +99,15 @@ class Track
   end
   
   def canonicalize_encoders!
+    encoder_version_string = "::AOAIOXXYSZ:: encoding tools, v1"
      if @encoder
        encoder_list = @encoder.compact.uniq.flatten
        
        encoder_list.collect! do |encoder|
          if 'Exact Audio Copy   (Secure mode)' == encoder
            'Exact Audio Copy (secure mode)'
+         else
+           encoder
          end
        end
        
@@ -112,10 +115,19 @@ class Track
          encoder_list << 'lame 3.96.1 --alt-preset standard'
        end
        
-       encoder_list << "::AOAIOXXYSZ:: encoding tools, v1"
+       encoder_list << encoder_version_string unless encoder_list.detect { |name| name == encoder_version_string }
        
        @encoder = encoder_list
     end
+  end
+  
+  def reconstituted_name
+    reconstituted = ''
+    reconstituted << name
+    reconstituted << " (feat. #{featured_artists.join(', ')})" if featured_artists.size > 0
+    reconstituted << " [#{remix}]" if remix && remix != ''
+    
+    reconstituted
   end
   
   def canonicalize_comments!

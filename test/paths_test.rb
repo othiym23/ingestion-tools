@@ -18,6 +18,13 @@ class PathsTest < Test::Unit::TestCase
            "Gotta be able to recognize an invalid path (with invalid characters) when we see it"
   end
   
+  def test_recognize_preingested_album
+    assert PathUtils.album_ingested?(File.expand_path('../../mp3info/sample-metadata'),
+                                     File.join(File.expand_path('../../mp3info/sample-metadata'),
+                                               'Boredoms/Rebore Vol 3 mixed by DJ Krush')),
+           "album should be recognized as ingested"
+  end
+  
   def test_recognize_split_album
     assert PathUtils.valid_mp3_path?('./Xasthur  Leviathan/Xasthur  Leviathan/Xasthur - Xasthur  Leviathan - 02 - Keeper Of Sharpened Blades And Ominous Fates.mp3'),
            "Gotta be able to recognize a valid path for a split album."

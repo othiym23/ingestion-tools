@@ -169,6 +169,54 @@ class AlbumTest < Test::Unit::TestCase
     assert !track_list.detect { |track| '324' != track.artist_name }
   end
   
+  def test_album_display
+    sample_output =<<END
+[2006] Razor X Productions: Killing Sound (Dancehall)
+
+  Disc 1:
+    1.1: Killer
+                     Featured: He-Man
+    1.2: WWW
+                     Featured: Mexican
+    1.3: Slew Dem
+                     Featured: Wayne Lonesome
+    1.4: Child Molester
+                     Featured: Mexican
+    1.5: Boom Boom Claat
+                     Featured: Cutty Ranks
+    1.6: Imitator
+                     Featured: Daddy Freddy
+    1.7: War Start
+                     Featured: Bongo Chilli
+    1.8: Yard Man
+                     Featured: El Feco
+    1.9: I Don't Know
+                     Featured: Tony Tuff
+    1.10: Killer Queen
+                     Featured: Warrior Queen
+  Disc 2:
+    2.1: Kill Version
+    2.2: W Version
+    2.3: Slew Version
+    2.4: Child Version
+    2.5: Boom Version
+    2.6: Imitate Version
+    2.7: Problem Version
+    2.8: Start Version
+    2.9: Yard Version
+    2.10: Don't Version
+
+Encoded by Exact Audio Copy (secure mode)
+           lame 3.96.1 --alt-preset standard
+           ::AOAIOXXYSZ:: encoding tools, v1
+
+END
+    
+    albums = load_albums("Razor X Productions/*/*.mp3")
+    album = albums.first
+    assert_equal sample_output, album.display_formatted
+  end
+  
   private
   
   def load_albums(path)

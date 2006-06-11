@@ -5,12 +5,12 @@ class PathUtils
   def PathUtils.valid_mp3_path?(path)
     if (mp3_file? File.basename(path)) && (path_canonical? path)
 
-      file_track = TrackFilenameMetadata.new(path)
-      path_track = TrackPathMetadata.new(path)
+      file_track = TrackFilenameMetadata.load_from_path(path)
+      path_track = TrackPathMetadata.load_from_path(path)
       
       if ('.' == File.dirname(path).split(File::SEPARATOR)[0]) &&
          (file_track.album_name == path_track.album_name) &&
-         ((file_track.artist_name == path_track.artist_name) ||
+         ((file_track.artist_name == path_track.album_artist_name) ||
            path_track.compilation? ||
            track_from_split?(path_track, file_track))
         true
@@ -51,17 +51,15 @@ class PathUtils
     path.gsub(/[^a-zA-Z0-9 .\/-]/, '')
   end
   
-  def PathUtils.album_ingested?(archive_base, new_base)
-    path_elements = new_base.split(File::SEPARATOR)
+  def PathUtils.album_ingested?(archive_base, disc_path)
+    path_elements = disc_path.split(File::SEPARATOR)
     artist_name = path_elements[-2]
-    album_name = path_elements[-1]
+    disc_name = path_elements[-1]
 
-    File.exists?(archive_base + File::SEPARATOR +
-                 artist_name + File::SEPARATOR + 
-                 album_name) ||
-    File.exists?(archive_base + File::SEPARATOR +
-                 artist_name + File::SEPARATOR + 
-                 "The " + album_name)
+    File.exists?(File.join(archive_base, artist_name, disc_name)) ||
+    File.exists?(File.join(archive_base, artist_name, "The " + disc_name)) ||
+    File.exists?(File.join(archive_base, "The " + artist_name, disc_name)) ||
+    File.exists?(File.join(archive_base, "The " + artist_name, "The " + disc_name))
   end
 
   private
@@ -75,7 +73,7 @@ class PathUtils
   end
   
   def PathUtils.track_from_split?(path_track, file_track)
-    if (path_track.artist_name.match(file_track.artist_name) &&
+    if (path_track.album_artist_name.match(file_track.artist_name) &&
         !(file_track.artist_name == "The #{path_track.artist_name}"))
       true
     else

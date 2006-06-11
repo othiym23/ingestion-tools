@@ -14,16 +14,20 @@ class Album
   end
   
   def number_of_tracks_loaded
-    @discs.compact.inject(0) { |sum, disc| sum + disc.number_of_tracks_loaded }
+    tracks.size
   end
   
   def number_of_discs_loaded
     @discs.compact.size
   end
   
-  # this function serves a VERY SPECIFIC function, which is swapping all the
-  # encoder fields for my GRIP-encoded tracks into the encoder field from thhe
-  # comments field where I stashed them.
+  def tracks
+    @discs.compact.collect {|disc| disc.tracks}.flatten
+  end
+  
+  # HEURISTIC: this function serves a VERY SPECIFIC function, which is swapping
+  # all the encoder fields for my GRIP-encoded tracks into the encoder field
+  # from the comments field, where I stashed them.
   def set_encoder_from_comments!
     start_comment = @discs.compact.first.tracks.first.comment
     if start_comment.is_a? Array
@@ -86,7 +90,7 @@ class Album
     formatted_album << "\n"
 
     discs.compact.each do |disc|
-      formatted_album << "  Disc #{disc.number}:" if discs.compact.size > 1
+      formatted_album << "  Disc #{disc.number}:\n" if discs.compact.size > 1
       disc.tracks.sort { |first,second| first.sequence <=> second.sequence }.each do |track|
         comments =  format_comments(track.comment)
         out = "    #{disc.number}.#{track.sequence}: "
