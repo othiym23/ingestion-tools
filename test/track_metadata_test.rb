@@ -1,10 +1,13 @@
 $: << File.expand_path(File.join(File.dirname(__FILE__), '../lib'))
 
+require 'fileutils'
+
 require 'test/unit'
 require 'album'
 require 'disc'
 require 'track'
 require 'track_metadata'
+require 'path_utils'
 
 class TrackMetadataTest < Test::Unit::TestCase
   def test_find_path_artist
@@ -26,7 +29,7 @@ class TrackMetadataTest < Test::Unit::TestCase
     
     assert_equal 'Razor X Productions', path.artist_directory
     assert_equal 'Killing Sound disc 1', path.disc_directory
-    assert_equal 'Razor X Productions' << File::SEPARATOR << 'Killing Sound disc 1', path.canonical_path
+    assert_equal File.join('Razor X Productions', 'Killing Sound disc 1'), path.canonical_path
   end
   
   def test_diacritic_in_canonical_path
@@ -36,7 +39,7 @@ class TrackMetadataTest < Test::Unit::TestCase
     
     assert_equal 'Bjork', path.artist_directory
     assert_equal 'Medulla Pinata', path.disc_directory
-    assert_equal 'Bjork' << File::SEPARATOR << 'Medulla Pinata', path.canonical_path
+    assert_equal File.join('Bjork', 'Medulla Pinata'), path.canonical_path
   end
   
   def test_diacritic_in_canonical_filename
@@ -57,7 +60,7 @@ class TrackMetadataTest < Test::Unit::TestCase
     id3.track_name = "Jøga"
     id3.sequence = 1
     
-    assert_equal 'Bjork' << File::SEPARATOR << 'Medulla Pinata' << File::SEPARATOR << 'Bjork - Medulla Pinata - 01 - Joga.mp3',
+    assert_equal File.join('Bjork', 'Medulla Pinata', 'Bjork - Medulla Pinata - 01 - Joga.mp3'),
                  id3.canonical_full_path
   end
   
@@ -71,7 +74,7 @@ class TrackMetadataTest < Test::Unit::TestCase
     track.sequence = 4
     track.name = "Jøga"
         
-    assert_equal 'Bjork' << File::SEPARATOR << 'Medulla Pinata' << File::SEPARATOR << 'Bjork - Medulla Pinata - 04 - Joga.mp3',
+    assert_equal File.join('Bjork', 'Medulla Pinata', 'Bjork - Medulla Pinata - 04 - Joga.mp3'),
                  TrackId3Metadata.load_from_track(track).canonical_full_path
   end
   
@@ -87,5 +90,49 @@ class TrackMetadataTest < Test::Unit::TestCase
         
     assert_equal 'Bjork - Medulla Pinata - 04 - Joga.mp3',
                  TrackFilenameMetadata.load_from_track(track).canonical_filename
+  end
+  
+  def test_id3_remixer
+    stage_mp3('Razor X Productions/Killing Sound [disc 1]/Razor X Productions - Killing Sound [disc 1] - 05 - Boom Boom Claat (feat. Cutty Ranks).mp3') do |file|
+      id3 = TrackId3Metadata.load_from_path(file) 
+      id3.remixer = 'The Bug'
+      
+      id3.save
+      
+      saved_id3 = TrackId3Metadata.load_from_path(file)
+      
+      assert_equal 'The Bug', saved_id3.remixer, "remixer should survive being saved"
+    end
+  end
+  
+  def test_id3_remix_name
+    stage_mp3('Razor X Productions/Killing Sound [disc 1]/Razor X Productions - Killing Sound [disc 1] - 05 - Boom Boom Claat (feat. Cutty Ranks).mp3') do |file|
+      id3 = TrackId3Metadata.load_from_path(file) 
+      id3.remix_name = 'original version'
+      
+      id3.save
+      
+      saved_id3 = TrackId3Metadata.load_from_path(file)
+      
+      assert_equal 'original version', saved_id3.remix_name, "remix name should survive being saved"
+    end
+  end
+  
+  private
+  
+  def stage_mp3(relative_path)
+    staging_dir = 'staging'
+    source_file = File.join(File.expand_path('../../mp3info/sample-metadata/'),
+                            relative_path)
+    staging_file = File.join(staging_dir, relative_path)
+
+    begin
+      FileUtils.mkdir(staging_dir)
+      PathUtils.safe_copy(source_file, staging_file)
+      
+      yield(staging_file)
+    ensure
+      FileUtils.rmtree(staging_dir)
+    end
   end
 end

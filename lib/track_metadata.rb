@@ -123,7 +123,7 @@ end
 class TrackId3Metadata < TrackMetadata
   attr_accessor :disc_number, :max_disc_number, :sequence, :max_sequence
   attr_accessor :genre, :release_date, :comment, :encoder, :compilation
-  attr_accessor :album_artist_name
+  attr_accessor :remix_name, :remixer, :album_artist_name
   attr_accessor :musicbrainz_artist_id, :musicbrainz_album_artist_id
   attr_accessor :musicbrainz_album_id, :musicbrainz_album_type
   attr_accessor :musicbrainz_album_status, :musicbrainz_album_release_country
@@ -150,6 +150,7 @@ class TrackId3Metadata < TrackMetadata
         id3v2 = Mp3InfoFactory.adaptor(mp3info_dao.tag2)
 
         id3.track_name = reconcile_value(id3v2.track_name)
+        id3.remix_name = reconcile_value(id3v2.remix_name)
         id3.album_name = reconcile_value(id3v2.album_name)
         id3.artist_name = reconcile_value(id3v2.artist_name)
 
@@ -160,6 +161,7 @@ class TrackId3Metadata < TrackMetadata
         id3.release_date = reconcile_value(id3v2.release_date)
         
         id3.comment = reconcile_value(id3v2.comment)
+        id3.remixer = reconcile_value(id3v2.remixer)
         id3.encoder = reconcile_encoders(id3v2.encoder)
 
         id3.genre = reconcile_value(id3v2.genre)
@@ -187,6 +189,7 @@ class TrackId3Metadata < TrackMetadata
     
     id3.full_path = track.path
     id3.track_name = track.reconstituted_name
+    id3.remix_name = track.remix
     id3.artist_name = track.artist_name
     id3.sequence = track.sequence
     
@@ -222,15 +225,18 @@ class TrackId3Metadata < TrackMetadata
     Mp3Info.open(full_path) do |mp3|
       id3v2 = Mp3InfoFactory.adaptor(mp3.tag2)
 
-      id3v2.track_name = track_name if track_name
-      id3v2.album_name = album_name if album_name
-      id3v2.artist_name = artist_name if artist_name
+      id3v2.track_name = track_name if track_name && '' != track_name
+      id3v2.remix_name = remix_name if remix_name && '' != remix_name
+      id3v2.album_name = album_name if album_name && '' != album_name
+      id3v2.artist_name = artist_name if artist_name && '' != artist_name
 
-      id3v2.disc_set = "#{disc_number}/#{max_disc_number}"
-      id3v2.sequence_info = "#{"%02d" % sequence}/#{max_sequence}"
-
-      id3v2.comment = comment if comment
-      id3v2.encoder = encoder if encoder
+      id3v2.disc_set = "#{disc_number}/#{max_disc_number}" if disc_number && max_disc_number
+      id3v2.sequence_info = "%02d" % sequence if sequence && '' != sequence
+      id3v2.sequence_info.value << "/#{"%02d" % max_sequence}" if sequence && '' != sequence && max_sequence && ''!= max_sequence
+      
+      id3v2.comment = comment if comment && '' != comment
+      id3v2.remixer = remixer if remixer && '' != remixer
+      id3v2.encoder = encoder if encoder && '' != encoder
       
       id3v2.genre = genre if genre
       id3v2.compilation = compilation if compilation

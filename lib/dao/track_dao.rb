@@ -15,6 +15,7 @@ class TrackDao
     @track = Track.new(path)
     
     @track.name = @id3.track_name || @filename.track_name
+    @track.remix = @id3.remix_name
     @track.artist_name = @id3.artist_name || @filename.artist_name || @path.artist_name
     @track.sequence = (@id3.sequence || @filename.sequence).to_i
 
@@ -126,6 +127,7 @@ class TrackDao
     id3.musicbrainz_album_artist_id = dao.musicbrainz_album_artist_id
     
     id3.track_name = track.reconstituted_name
+    id3.remix_name = track.remix
     id3.artist_name = track.artist_name
     id3.sequence = track.sequence
     

@@ -76,6 +76,14 @@ class Mp3InfoId3v24Tag < Mp3InfoFactory
     @tag.TIT2 = value
   end
   
+  def remix_name
+    @tag.TIT3
+  end
+  
+  def remix_name=(value)
+    @tag.TIT3 = value
+  end
+  
   def album_name
     @tag.TALB
   end
@@ -90,6 +98,14 @@ class Mp3InfoId3v24Tag < Mp3InfoFactory
   
   def artist_name=(value)
     @tag.TPE1 = value
+  end
+  
+  def remixer
+    @tag.TPE4
+  end
+  
+  def remixer=(value)
+    @tag.TPE4 = value
   end
   
   def disc_set
@@ -125,11 +141,11 @@ class Mp3InfoId3v24Tag < Mp3InfoFactory
   end
   
   def release_date
-    @tag.TYER
+    @tag.TDRC || @tag.TYER
   end
   
   def release_date=(value)
-    @tag.TYER = value
+    @tag.TDRC = value
   end
   
   def comment
@@ -138,7 +154,7 @@ class Mp3InfoId3v24Tag < Mp3InfoFactory
   
   def comment=(value)
     @tag.COMM = value
-    @tag.COMM.description = "::AOIOXXYSZ:: Info"
+    @tag.COMM.description = ''
   end
   
   def encoder
@@ -206,6 +222,14 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
     @tag.TT2 = value
   end
   
+  def remix_name
+    @tag.TT3
+  end
+  
+  def remix_name=(value)
+    @tag.TT3 = value
+  end
+  
   def album_name
     @tag.TAL
   end
@@ -220,6 +244,14 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
   
   def artist_name=(value)
     @tag.TP1 = value
+  end
+  
+  def remixer
+    @tag.TP4
+  end
+  
+  def remixer=(value)
+    @tag.TP4 = value
   end
   
   def disc_set
