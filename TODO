@@ -4,7 +4,6 @@ management console:
 ** write periodic task to rebuild pending album cache
 ** write periodic task to connect to MusicBrainz and try to match unmatched tracks
 ** group tracks by artist directory + album name
-* add simple album display
 * validate number of tracks in set vs number of tracks loaded
 * add random album processing
 * flag unmarked compilations (correction already handled)

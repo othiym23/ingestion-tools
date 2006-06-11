@@ -101,7 +101,9 @@ def process_all_albums(albums)
       when 'r'
         refined_albums = albums
       else
-        process_individual_album(refined_albums[album_number.to_i - 1])
+        selected_album = refined_albums[album_number.to_i - 1]
+        puts selected_album.display_formatted(true) + "\n"
+        process_individual_album(selected_album)
       end
     end
   end

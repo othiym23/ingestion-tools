@@ -92,6 +92,9 @@ class Album
     end
   end
   
+  # HEURISTIC: at some point I may switch to using a more sophisticated
+  # title-case naming scheme, but the existing archive uses a simple
+  # braindamaged scheme of capitalizing all initial characters in names
   def capitalize_names!
     @artist_name = StringUtils.mixed_case(@artist_name)
     @name = StringUtils.mixed_case(@name)
@@ -99,7 +102,7 @@ class Album
     @mixer = StringUtils.mixed_case(@mixer)
   end
   
-  def display_formatted
+  def display_formatted(simple = false)
     encoders = []
     formatted_album = ''
 
@@ -110,55 +113,67 @@ class Album
     discs.compact.each do |disc|
       formatted_album << "  Disc #{disc.number}:\n" if discs.compact.size > 1
       disc.tracks.sort { |first,second| first.sequence <=> second.sequence }.each do |track|
-        comments =  format_comments(track.comment)
         out = "    #{disc.number}.#{track.sequence}: "
         out << "#{track.artist_name} - " if track.artist_name != artist_name
-        out << "#{track.name}\n"
+
+        unless simple
+          out << "#{track.name}\n"
+        else
+          out << track.reconstituted_name << "\n"
+        end
+
         formatted_album << out
-        formatted_album << "                     Featured: #{track.featured_artists.join(', ')}\n" if track.featured_artists.size > 0
-        formatted_album << "                        Remix: #{track.remix}\n" if track.remix && track.remix != ''
-        formatted_album << "                        Genre: #{track.genre}\n" if track.genre && track.genre != genre
-        formatted_album << "                     Comments: [#{comments}]\n" if comments && comments != ''
-        formatted_album << "                 Release date: #{track.release_date}\n" if track.release_date && track.release_date != release_date
-        formatted_album << "       Musicbrainz track UUID: #{track.unique_id}\n" if track.unique_id && track.unique_id != ''
-        formatted_album << "      Musicbrainz artist UUID: #{track.musicbrainz_artist_id}\n" if track.musicbrainz_artist_id && 
-                                                                                                track.musicbrainz_artist_id != '' &&
-                                                                                                track.musicbrainz_artist_id != musicbrainz_album_artist_id
-        encoders << track.encoder if track.encoder.size > 0
+
+        if !simple
+          comments =  track.format_comments
+
+          track_attributes = []
+          track_attributes << ["Featured", track.featured_artists.join(', ')] if track.featured_artists.size > 0
+          track_attributes << ["Remix", track.remix] if track.remix && track.remix != ''
+          track_attributes << ["Genre", track.genre] if track.genre && track.genre != genre
+          track_attributes << ["Comments", comments] if comments && comments != ''
+          track_attributes << ["Release date", track.release_date] if track.release_date && track.release_date != release_date
+          track_attributes << ["Musicbrainz track UUID", track.unique_id] if track.unique_id && track.unique_id != ''
+          track_attributes << ["Musicbrainz artist UUID", track.musicbrainz_artist_id] if track.musicbrainz_artist_id && 
+                                                                                                  track.musicbrainz_artist_id != '' &&
+                                                                                                  track.musicbrainz_artist_id != musicbrainz_album_artist_id
+          formatted_album << justify_attribute_list(track_attributes, 6)
+
+          encoders << track.encoder if track.encoder.size > 0
+        end
       end
     end
 
-    if musicbrainz_album_id || musicbrainz_album_artist_id ||
-       musicbrainz_album_type || musicbrainz_album_status
+    if !simple && (musicbrainz_album_id || musicbrainz_album_artist_id ||
+                   musicbrainz_album_type || musicbrainz_album_status)
       formatted_album << "\nMusicbrainz album info:\n"
-      formatted_album << "        artist UUID: #{musicbrainz_album_artist_id}\n" if musicbrainz_album_artist_id && '' != musicbrainz_album_artist_id
-      formatted_album << "         album UUID: #{musicbrainz_album_id}\n" if musicbrainz_album_id
-      formatted_album << "    release country: #{musicbrainz_album_release_country}\n" if musicbrainz_album_release_country
-      formatted_album << "             status: #{musicbrainz_album_status}\n" if musicbrainz_album_status
-      formatted_album << "               type: #{musicbrainz_album_type}\n" if musicbrainz_album_type
+      musicbrainz_attributes = []
+      musicbrainz_attributes << ["artist UUID", musicbrainz_album_artist_id] if musicbrainz_album_artist_id && '' != musicbrainz_album_artist_id
+      musicbrainz_attributes << ["album UUID", musicbrainz_album_id] if musicbrainz_album_id
+      musicbrainz_attributes << ["release country", musicbrainz_album_release_country] if musicbrainz_album_release_country
+      musicbrainz_attributes << ["status", musicbrainz_album_status] if musicbrainz_album_status
+      musicbrainz_attributes << ["type", musicbrainz_album_type] if musicbrainz_album_type
+
+      formatted_album << justify_attribute_list(musicbrainz_attributes)
     end
 
-    encoders = encoders.flatten.compact.uniq
-    raw_encoder = encoders.join("\n           ")
-    formatted_album << "\nEncoded by #{raw_encoder}\n\n" if raw_encoder && raw_encoder != ''
+    if !simple
+      encoders = encoders.flatten.compact.uniq
+      raw_encoder = encoders.join("\n           ")
+      formatted_album << "\nEncoded by #{raw_encoder}\n\n" if raw_encoder && raw_encoder != ''
+    end
     
     formatted_album
   end
   
   private
   
-  # TODO: move this into the track class
-  def format_comments(comments)
-    comment_string = ''
-    if Array == comments.class
-      consolidated = comments.uniq
-      if consolidated.size == 1
-        comment_string = consolidated[0]
-      else
-        comment_string = consolidated.join(', ')
-      end
-    else
-      comment_string = comments if comments && '' != comments
+  def justify_attribute_list(list, offset = 4)
+    out = ''
+    max_width = offset + list.max{|l,r| l[0].length <=> r[0].length}[0].length if list.size > 0
+    list.each do |attribute|
+      out << (' ' * (max_width - attribute[0].length)) << attribute[0] << ': ' << attribute[1] << "\n"
     end
+    out
   end
 end

@@ -175,25 +175,25 @@ class AlbumTest < Test::Unit::TestCase
 
   Disc 1:
     1.1: Killer
-                     Featured: He-Man
+      Featured: He-Man
     1.2: WWW
-                     Featured: Mexican
+      Featured: Mexican
     1.3: Slew Dem
-                     Featured: Wayne Lonesome
+      Featured: Wayne Lonesome
     1.4: Child Molester
-                     Featured: Mexican
+      Featured: Mexican
     1.5: Boom Boom Claat
-                     Featured: Cutty Ranks
+      Featured: Cutty Ranks
     1.6: Imitator
-                     Featured: Daddy Freddy
+      Featured: Daddy Freddy
     1.7: War Start
-                     Featured: Bongo Chilli
+      Featured: Bongo Chilli
     1.8: Yard Man
-                     Featured: El Feco
+      Featured: El Feco
     1.9: I Don't Know
-                     Featured: Tony Tuff
+      Featured: Tony Tuff
     1.10: Killer Queen
-                     Featured: Warrior Queen
+      Featured: Warrior Queen
   Disc 2:
     2.1: Kill Version
     2.2: W Version
@@ -217,6 +217,39 @@ END
     assert_equal sample_output, album.display_formatted
   end
   
+    def test_album_display_simple
+      sample_output =<<END
+[2006] Razor X Productions: Killing Sound (Dancehall)
+
+  Disc 1:
+    1.1: Killer (feat. He-Man)
+    1.2: WWW (feat. Mexican)
+    1.3: Slew Dem (feat. Wayne Lonesome)
+    1.4: Child Molester (feat. Mexican)
+    1.5: Boom Boom Claat (feat. Cutty Ranks)
+    1.6: Imitator (feat. Daddy Freddy)
+    1.7: War Start (feat. Bongo Chilli)
+    1.8: Yard Man (feat. El Feco)
+    1.9: I Don't Know (feat. Tony Tuff)
+    1.10: Killer Queen (feat. Warrior Queen)
+  Disc 2:
+    2.1: Kill Version
+    2.2: W Version
+    2.3: Slew Version
+    2.4: Child Version
+    2.5: Boom Version
+    2.6: Imitate Version
+    2.7: Problem Version
+    2.8: Start Version
+    2.9: Yard Version
+    2.10: Don't Version
+END
+
+      albums = load_albums("Razor X Productions/*/*.mp3")
+      album = albums.first
+      assert_equal sample_output, album.display_formatted(true)
+    end
+
   def test_capitalization_of_titles
     album = Album.new
     

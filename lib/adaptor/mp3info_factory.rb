@@ -10,12 +10,12 @@ class Mp3InfoFactory
     case tag.version
     when '2.2.0'
       Mp3InfoId3v22Tag.new(tag)
-    when '2.2.1'
-      Mp3InfoId3v22Tag.new(tag)
     when '2.3.0'
       Mp3InfoId3v23Tag.new(tag)
     when '2.4.0'
       Mp3InfoId3v24Tag.new(tag)
+    else
+      raise ArgumentError.new("#{tag.version} is not recognized as a valid ID3V2 tag version")
     end
   end
 

@@ -17,42 +17,42 @@ class Track
   
   def set_remix!
     if patterns = @name.match(/^(.*) \[(.*)\](.*)$/)
-      @name = patterns[1] + patterns[3]
+      @name = patterns[1] << patterns[3]
       @remix = patterns[2]
     end
 
     if patterns = @name.match(/^(.*) \((.*[Rr]emix)\)(.*)$/)
-      @name = patterns[1] + patterns[3]
+      @name = patterns[1] << patterns[3]
       @remix = patterns[2]
     end
 
     if patterns = @name.match(/^(.*) \((.* [Mm]ix)\)(.*)$/)
-      @name = patterns[1] + patterns[3]
+      @name = patterns[1] << patterns[3]
       @remix = patterns[2]
     end
 
     if patterns = @name.match(/^(.*) \((.*[Ee]dit)\)(.*)$/)
-      @name = patterns[1] + patterns[3]
+      @name = patterns[1] << patterns[3]
       @remix = patterns[2]
     end
 
     if patterns = @name.match(/^(.*) \((.*[Vv]ersion)\)(.*)$/)
-      @name = patterns[1] + patterns[3]
+      @name = patterns[1] << patterns[3]
       @remix = patterns[2]
     end
 
     if patterns = @name.match(/^(.*) \((.*[Ii]nstrumental)\)(.*)$/)
-      @name = patterns[1] + patterns[3]
+      @name = patterns[1] << patterns[3]
       @remix = patterns[2]
     end
 
     if patterns = @name.match(/^(.*) \((.*[Vv]ocal)\)(.*)$/)
-      @name = patterns[1] + patterns[3]
+      @name = patterns[1] << patterns[3]
       @remix = patterns[2]
     end
 
     if patterns = @name.match(/^(.*) \((.*[Oo]riginal)\)(.*)$/)
-      @name = patterns[1] + patterns[3]
+      @name = patterns[1] << patterns[3]
       @remix = patterns[2]
     end
   end
@@ -60,13 +60,13 @@ class Track
   def set_sort_order!
     unless @sort_order && '' != @sort_order
       if match_data = @name.match(/\A(The|A|An) (.+)\Z/)
-        @sort_order = ('' << match_data[2] << ', ' << match_data[1])
+        @sort_order = (match_data[2] << ', ' << match_data[1])
       end
     end
 
     unless @artist_sort_order && '' != @artist_sort_order
       if match_data = @artist_name.match(/\A(The|A|An) (.+)\Z/)
-        @artist_sort_order = ('' << match_data[2] << ', ' << match_data[1])
+        @artist_sort_order = (match_data[2] << ', ' << match_data[1])
       end
     end
   end
@@ -138,6 +138,11 @@ class Track
     end
   end
   
+  # HEURISTIC: most programs either can't read or don't use the extra 2.x
+  # frames for involved people and remix names, so we need a canonical
+  # form for the track name that includes that information:
+  #
+  # Track Name (feat. Featured Artist) [Named remix]
   def reconstituted_name
     reconstituted = ''
     reconstituted << name
@@ -153,6 +158,18 @@ class Track
     @comment = nil if @comment && @comment.match(/^Track \d+$/)
   end
   
+  def format_comments
+    comment_string = ''
+    if Array == @comment
+      comment_string = @comment.uniq.join(', ')
+    else
+      comment_string = @comment if @comment && '' != @comment
+    end
+  end
+
+  # HEURISTIC: at some point I may switch to using a more sophisticated
+  # title-case naming scheme, but the existing archive uses a simple
+  # braindamaged scheme of capitalizing all initial characters in names
   def capitalize_names!
     @artist_name = StringUtils.mixed_case(@artist_name)
     @name = StringUtils.mixed_case(@name)
@@ -166,7 +183,7 @@ class Track
   private
   
   # HEURISTIC: my personal style is to have every title word indiscriminately
-  # capitalized unless it's the word "remix", "mix", "version" or "live".
+  # capitalized *unless* it's the word "remix", "mix", "version" or "live".
   def capitalize_remix_name(remix_name)
     remix = StringUtils.mixed_case(remix_name)
     remix = "live" if remix == "Live"
