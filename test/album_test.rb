@@ -217,6 +217,22 @@ END
     assert_equal sample_output, album.display_formatted
   end
   
+  def test_capitalization_of_titles
+    album = Album.new
+    
+    album.artist_name = "alien sex fiend"
+    album.name = "too much acid? NO SUCH THING!"
+    album.genre = "goth rock"
+    album.mixer = "homicidal MC"
+    
+    album.capitalize_names!
+    
+    assert_equal "Alien Sex Fiend", album.artist_name
+    assert_equal "Too Much Acid? NO SUCH THING!", album.name
+    assert_equal "Goth Rock", album.genre
+    assert_equal "Homicidal MC", album.mixer
+  end
+  
   private
   
   def load_albums(path)

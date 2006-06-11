@@ -1,7 +1,7 @@
 require 'track_metadata'
 require 'fileutils'
 
-class PathUtils
+module PathUtils
   def PathUtils.valid_mp3_path?(path)
     if (mp3_file? File.basename(path)) && (path_canonical? path)
 

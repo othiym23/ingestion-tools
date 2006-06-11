@@ -1,3 +1,5 @@
+require 'string_utils'
+
 class Album
   attr_accessor :name, :artist_name
   attr_accessor :discs, :number_of_discs
@@ -79,6 +81,13 @@ class Album
         end
       end
     end
+  end
+  
+  def capitalize_names!
+    @artist_name = StringUtils.mixed_case(@artist_name)
+    @name = StringUtils.mixed_case(@name)
+    @genre = StringUtils.mixed_case(@genre)
+    @mixer = StringUtils.mixed_case(@mixer)
   end
   
   def display_formatted

@@ -26,9 +26,6 @@ unless PathUtils.album_ingested?(ARCHIVE_BASE, source_directory)
 
   # TODO: correct album metadata
   # TODO: fetch Musicbrainz annotations from server
-  # TODO: safely save changed tags to disk
-  # TODO: safely move corrected files into place with correct name
-  # TODO: safely remove empty directories
 else
   puts "This album already exists in the archive."
   # TODO prompt to compare two albums

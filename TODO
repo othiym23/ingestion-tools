@@ -12,10 +12,13 @@ management console:
 * prompt to compare two albums
 * prompt to replace and / or remove one of the two albums
 * load list of genres from database and canonicalize if not direct match
+* match artists against existing archive
+* match artists against Netjuke
 
 album ingestion:
-* handle sort order from frames (TSOP in 2.4 / XSOP in 2.3)
 * handle featured artists from frames
+* handle remixes from frames
+* handle sort order from frames (TSOP in 2.4 / XSOP in 2.3)
 * split consolidated multi-disc albums back into their discs
 * fetch Musicbrainz annotations from server
 * classical support:
@@ -25,11 +28,6 @@ album ingestion:
 
 heuristic metadata correction:
 * collect comments and turn into encoder when a fraction are missing
-  display and correct album metadata:
-** canonicalize track, artist and album capitalization
-** canonicalize track filename and rename to canonicalized standard
-* match artists against archive
-* match artists against database
 * correctly handle split albums with "Artist 1 / Artist 2" titles
 * improve encoder cattle-catcher to do something different with 
   release codes (i.e. not sticking them on the encoder string)

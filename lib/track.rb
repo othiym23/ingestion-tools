@@ -1,3 +1,5 @@
+require 'string_utils'
+
 class Track
   attr_reader :path
   
@@ -130,7 +132,31 @@ class Track
     reconstituted
   end
   
+  # HEURISTIC: Exact Audio Copy likes to add a totally gratuitous comment
+  # indicating which track the MP3 came from on the original CD.
   def canonicalize_comments!
     @comment = nil if @comment && @comment.match(/^Track \d+$/)
+  end
+  
+  def capitalize_names!
+    @artist_name = StringUtils.mixed_case(@artist_name)
+    @name = StringUtils.mixed_case(@name)
+    @genre = StringUtils.mixed_case(@genre)
+    
+    @remix = capitalize_remix_name(@remix)
+
+    @featured_artists.collect! { |artist| StringUtils.mixed_case(artist) }
+  end
+  
+  private
+  
+  # HEURISTIC: my personal style is to have every title word indiscriminately
+  # capitalized unless it's the word "remix", "mix", "version" or "live".
+  def capitalize_remix_name(remix_name)
+    remix = StringUtils.mixed_case(remix_name)
+    remix = "live" if remix == "Live"
+    remix.gsub!(/ ?Mix\Z/, ' mix')
+    remix.gsub!(/ ?Remix\Z/, ' remix')
+    remix.gsub(/ ?Version\Z/, ' version')
   end
 end

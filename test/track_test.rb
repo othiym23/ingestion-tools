@@ -74,6 +74,24 @@ class TrackTest < Test::Unit::TestCase
     assert_equal 14, track.sequence
   end
   
+  def test_capitalization_of_titles
+    track = Track.new("IGNORED")
+    
+    track.artist_name = "alien sex fiend"
+    track.name = "i walk the line"
+    track.remix = "nonexistent mix"
+    track.featured_artists << 'MC batcaver'
+    track.genre = "goth rock"
+    
+    track.capitalize_names!
+    
+    assert_equal "Alien Sex Fiend", track.artist_name
+    assert_equal "I Walk The Line", track.name
+    assert_equal "Nonexistent mix", track.remix
+    assert_equal "MC Batcaver", track.featured_artists.first
+    assert_equal "Goth Rock", track.genre
+  end
+  
   private
 
   def load_track(path)
