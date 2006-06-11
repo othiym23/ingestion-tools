@@ -17,8 +17,6 @@ management console:
 
 album ingestion:
 * handle featured artists from frames
-* handle remixes from frames
-* handle sort order from frames (TSOP in 2.4 / XSOP in 2.3)
 * split consolidated multi-disc albums back into their discs
 * fetch Musicbrainz annotations from server
 * classical support:

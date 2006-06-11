@@ -26,8 +26,12 @@ class TrackDao
     @track.unique_id = @id3.unique_id
     @track.musicbrainz_artist_id = @id3.musicbrainz_artist_id
     
+    @track.sort_order = @id3.track_sort_order
+    @track.artist_sort_order = @id3.artist_sort_order
+    
     @track.set_remix!
     @track.set_featured_artists!
+    @track.set_sort_order!
     @track.canonicalize_encoders!
     @track.canonicalize_comments!
   end
@@ -85,6 +89,10 @@ class TrackDao
     @id3.max_sequence.to_i
   end
   
+  def album_sort_order
+    @id3.album_sort_order
+  end
+  
   def musicbrainz_album_artist_id
     return @id3.musicbrainz_album_artist_id
   end
@@ -139,6 +147,9 @@ class TrackDao
     
     id3.unique_id = track.unique_id
     id3.musicbrainz_artist_id = track.musicbrainz_artist_id
+    
+    id3.track_sort_order = track.sort_order
+    id3.artist_sort_order = track.artist_sort_order
     
     id3
   end

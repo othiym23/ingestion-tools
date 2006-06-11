@@ -128,6 +128,7 @@ class TrackId3Metadata < TrackMetadata
   attr_accessor :musicbrainz_album_id, :musicbrainz_album_type
   attr_accessor :musicbrainz_album_status, :musicbrainz_album_release_country
   attr_accessor :unique_id
+  attr_accessor :track_sort_order, :artist_sort_order, :album_sort_order
   
   def TrackId3Metadata.load_from_path(full_path)
     id3 = TrackId3Metadata.new
@@ -174,6 +175,10 @@ class TrackId3Metadata < TrackMetadata
         id3.musicbrainz_album_status = reconcile_value(id3v2.musicbrainz_album_status)
         id3.musicbrainz_album_release_country = reconcile_value(id3v2.musicbrainz_album_release_country)
         id3.musicbrainz_album_artist_id = reconcile_value(id3v2.musicbrainz_album_artist_id)
+        
+        id3.artist_sort_order = reconcile_value(id3v2.artist_sort_order)
+        id3.album_sort_order = reconcile_value(id3v2.album_sort_order) if id3v2.respond_to?(:album_sort_order=)
+        id3.track_sort_order = reconcile_value(id3v2.track_sort_order) if id3v2.respond_to?(:track_sort_order=)
       end
     end
     
@@ -215,6 +220,10 @@ class TrackId3Metadata < TrackMetadata
     id3.musicbrainz_album_release_country = album.musicbrainz_album_release_country
     id3.musicbrainz_album_artist_id = album.musicbrainz_album_artist_id
 
+    id3.artist_sort_order = track.artist_sort_order
+    id3.album_sort_order = album.sort_order
+    id3.track_sort_order = track.sort_order
+
     id3
   end
   
@@ -249,6 +258,10 @@ class TrackId3Metadata < TrackMetadata
       id3v2.musicbrainz_album_status = musicbrainz_album_status if musicbrainz_album_status
       id3v2.musicbrainz_album_release_country = musicbrainz_album_release_country if musicbrainz_album_release_country
       id3v2.musicbrainz_album_artist_id = musicbrainz_album_artist_id if musicbrainz_album_artist_id
+
+      id3v2.artist_sort_order = artist_sort_order if artist_sort_order && '' != artist_sort_order
+      id3v2.album_sort_order = album_sort_order if id3v2.respond_to?(:album_sort_order=) && album_sort_order && '' != album_sort_order
+      id3v2.track_sort_order = track_sort_order if id3v2.respond_to?(:track_sort_order=) && track_sort_order && '' != track_sort_order
     end
     
     true

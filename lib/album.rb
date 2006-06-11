@@ -6,6 +6,7 @@ class Album
   attr_accessor :genre, :release_date, :compilation, :mixer
   attr_accessor :musicbrainz_album_id, :musicbrainz_album_artist_id
   attr_accessor :musicbrainz_album_type, :musicbrainz_album_status, :musicbrainz_album_release_country
+  attr_accessor :sort_order
   
   def initialize
     @discs = []
@@ -79,6 +80,14 @@ class Album
         disc.tracks.each do |track|
           track.genre = 'Soundtrack'
         end
+      end
+    end
+  end
+  
+  def set_sort_order!
+    unless @sort_order && '' != @sort_order
+      if match_data = @name.match(/\A(The|A|An) (.+)\Z/)
+        @sort_order = ('' << match_data[2] << ', ' << match_data[1])
       end
     end
   end

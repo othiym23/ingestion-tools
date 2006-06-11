@@ -7,6 +7,7 @@ class Track
   attr_accessor :sequence, :genre, :comment, :encoder
   attr_accessor :remix, :featured_artists, :release_date
   attr_accessor :unique_id, :musicbrainz_artist_id
+  attr_accessor :sort_order, :artist_sort_order
   
   def initialize(path)
     @path = path
@@ -53,6 +54,20 @@ class Track
     if patterns = @name.match(/^(.*) \((.*[Oo]riginal)\)(.*)$/)
       @name = patterns[1] + patterns[3]
       @remix = patterns[2]
+    end
+  end
+  
+  def set_sort_order!
+    unless @sort_order && '' != @sort_order
+      if match_data = @name.match(/\A(The|A|An) (.+)\Z/)
+        @sort_order = ('' << match_data[2] << ', ' << match_data[1])
+      end
+    end
+
+    unless @artist_sort_order && '' != @artist_sort_order
+      if match_data = @artist_name.match(/\A(The|A|An) (.+)\Z/)
+        @artist_sort_order = ('' << match_data[2] << ', ' << match_data[1])
+      end
     end
   end
   

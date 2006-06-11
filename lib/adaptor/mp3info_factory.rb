@@ -7,10 +7,15 @@ class Mp3InfoFactory
   end
   
   def Mp3InfoFactory.adaptor(tag)
-    if tag.version =~ /2\.3/ || tag.version =~ /2\.4/
-      Mp3InfoId3v24Tag.new(tag)
-    elsif tag.version =~ /2\.2/
+    case tag.version
+    when '2.2.0'
       Mp3InfoId3v22Tag.new(tag)
+    when '2.2.1'
+      Mp3InfoId3v22Tag.new(tag)
+    when '2.3.0'
+      Mp3InfoId3v23Tag.new(tag)
+    when '2.4.0'
+      Mp3InfoId3v24Tag.new(tag)
     end
   end
 
@@ -63,7 +68,7 @@ class Mp3InfoFactory
   end
 end
 
-class Mp3InfoId3v24Tag < Mp3InfoFactory
+class Mp3InfoId3v23Tag < Mp3InfoFactory
   def initialize(tag)
     super(tag)
   end
@@ -183,6 +188,14 @@ class Mp3InfoId3v24Tag < Mp3InfoFactory
     @tag.UFID.namespace = 'http://musicbrainz.org'
   end
 
+  def artist_sort_order
+    @tag.XSOP
+  end
+  
+  def artist_sort_order=(value)
+    @tag.XSOP = value
+  end
+  
   protected
   
   def musicbrainz_getter(property_name)
@@ -197,6 +210,7 @@ class Mp3InfoId3v24Tag < Mp3InfoFactory
   
   def musicbrainz_setter(property_name, value)
     txxx = ID3V24::Frame.create_frame('TXXX', value)
+    txxx.encoding = 0 # ISO-8859-1, as per http://musicbrainz.org/docs/specs/metadata_tags.html
     txxx.description = property_name
 
     if @tag.TXXX
@@ -206,6 +220,40 @@ class Mp3InfoId3v24Tag < Mp3InfoFactory
         @tag.TXXX = [@tag.TXXX, txxx]
       end
     end
+  end
+end
+
+class Mp3InfoId3v24Tag < Mp3InfoId3v23Tag
+  def album_sort_order
+    @tag.TSOA
+  end
+  
+  def album_sort_order=(value)
+    @tag.TSOA = value
+  end
+  
+  def artist_sort_order
+    @tag.TSOP
+  end
+  
+  def artist_sort_order=(value)
+    @tag.TSOP = value
+  end
+  
+  def track_sort_order
+    @tag.TSOT
+  end
+  
+  def track_sort_order=(value)
+    @tag.TSOT = value
+  end
+  
+  def release_date
+    @tag.TYER
+  end
+  
+  def release_date=(value)
+    @tag.TYER = value
   end
 end
 
@@ -331,6 +379,14 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
     @tag.UFI.namespace = 'http://musicbrainz.org'
   end
 
+  def artist_sort_order
+    @tag.XSP
+  end
+  
+  def artist_sort_order=(value)
+    @tag.XSP = value
+  end
+  
   protected
   
   def musicbrainz_getter(property_name)

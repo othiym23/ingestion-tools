@@ -92,6 +92,16 @@ class TrackTest < Test::Unit::TestCase
     assert_equal "Goth Rock", track.genre
   end
   
+  def test_track_sort_order
+    track = load_track('Various Artists/The Crow OST/Pantera - The Crow OST - 09 - The Badge.mp3')
+    assert_equal 'The Badge', track.name
+    assert_equal 'Badge, The', track.sort_order
+
+    track = load_track('Various Artists/The Crow OST/The Cure - The Crow OST - 01 - Burn.mp3')
+    assert_equal 'The Cure', track.artist_name
+    assert_equal 'Cure, The', track.artist_sort_order
+  end
+  
   private
 
   def load_track(path)

@@ -233,6 +233,16 @@ END
     assert_equal "Homicidal MC", album.mixer
   end
   
+  def test_album_sort_order
+    albums = load_albums("Various Artists/The Crow OST/*.mp3")
+
+    album = albums.first
+    assert_equal true, album.compilation
+    assert_equal 'Various Artists', album.artist_name
+    assert_equal 'The Crow', album.name
+    assert_equal 'Crow, The', album.sort_order
+  end
+  
   private
   
   def load_albums(path)

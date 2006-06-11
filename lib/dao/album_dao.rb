@@ -33,6 +33,7 @@ class AlbumDao
       album.musicbrainz_album_status = track_dao.musicbrainz_album_status if track_dao.musicbrainz_album_status
       album.musicbrainz_album_release_country = track_dao.musicbrainz_album_release_country if track_dao.musicbrainz_album_release_country
       album.compilation = true if track_dao.compilation?
+      album.sort_order = track_dao.album_sort_order if track_dao.album_sort_order
       
       disc_number = track_dao.disc_number
       if album.discs[disc_number].nil?
@@ -57,6 +58,7 @@ class AlbumDao
       album.set_mixer!
       album.set_encoder_from_comments!
       album.find_hidden_soundtrack!
+      album.set_sort_order!
       
       album.discs.compact.each do |disc|
         disc.tracks.each do |track|
