@@ -28,7 +28,7 @@ class TrackDao
     
     @track.sort_order = @id3.track_sort_order
     @track.artist_sort_order = @id3.artist_sort_order
-    @track.featured_artists = @id3.featured_artists
+    @track.featured_artists = @id3.featured_artists || []
     @track.image = @id3.album_image
     
     @track.set_remix!
@@ -72,6 +72,13 @@ class TrackDao
     @id3.album_name ||
     @filename.album_name ||
     @path.album_name
+  end
+  
+  # HEURISTIC: to keep things like loose MP3 directories from going ape crazy,
+  # create a hash based on munged values for the artist name from the
+  # path and the album name, whatever it may be
+  def album_bucket
+    (@path.artist_name.upcase << '|' << album_name.upcase).gsub(' ', '')
   end
   
   def compilation?

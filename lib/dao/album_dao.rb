@@ -18,15 +18,15 @@ class AlbumDao
       track_dao = TrackDao.new(path)
       track = track_dao.track
 
-      album_name = track_dao.album_name
-      if albums[album_name].nil?
+      album_bucket = track_dao.album_bucket
+      if albums[album_bucket].nil?
         new_album = Album.new
-        new_album.name = album_name
+        new_album.name = track_dao.album_name
         new_album.number_of_discs = track_dao.number_of_discs_in_set
-        albums[album_name] = new_album
+        albums[album_bucket] = new_album
       end
 
-      album = albums[album_name]
+      album = albums[album_bucket]
       album.musicbrainz_album_artist_id = track_dao.musicbrainz_album_artist_id if track_dao.musicbrainz_album_artist_id
       album.musicbrainz_album_id = track_dao.musicbrainz_album_id if track_dao.musicbrainz_album_id
       album.musicbrainz_album_type = track_dao.musicbrainz_album_type if track_dao.musicbrainz_album_type
@@ -49,7 +49,7 @@ class AlbumDao
       disc.tracks << track
     end
 
-    albums.each do |album_name,album|
+    albums.each do |album_bucket,album|
       artists = []
       genres = []
       years = []

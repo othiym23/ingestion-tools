@@ -136,11 +136,12 @@ class Album
           comments =  track.format_comments
 
           track_attributes = []
+          track_attributes << ["Remix", track.remix] if track.remix && track.remix != ''
+          track_attributes << ["Genre", track.genre] if track.genre && track.genre != genre
           track_attributes << ["Artist sort", track.artist_sort_order] if track.artist_sort_order
           track_attributes << ["Sort", track.sort_order] if track.sort_order
           track_attributes << ["Featured", track.featured_artists.join(', ')] if track.featured_artists.size > 0
-          track_attributes << ["Remix", track.remix] if track.remix && track.remix != ''
-          track_attributes << ["Genre", track.genre] if track.genre && track.genre != genre
+          track_attributes << ["Image", track.image.mime_type] if track.image
           track_attributes << ["Comments", comments] if comments && comments != ''
           track_attributes << ["Release date", track.release_date] if track.release_date && track.release_date != release_date
           track_attributes << ["Musicbrainz track UUID", track.unique_id] if track.unique_id && track.unique_id != ''

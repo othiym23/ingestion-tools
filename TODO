@@ -3,7 +3,6 @@ management console:
 ** cache pending album list in holding database
 ** write periodic task to rebuild pending album cache
 ** write periodic task to connect to MusicBrainz and try to match unmatched tracks
-** group tracks by artist directory + album name
 * validate number of tracks in set vs number of tracks loaded
 * add random album processing
 * flag unmarked compilations (correction already handled)
@@ -13,6 +12,7 @@ management console:
 * load list of genres from database and canonicalize if not direct match
 * match artists against existing archive
 * match artists against Netjuke
+* canonicalize track genres against Netjuke genre list
 * associate arbitrary image with track
 
 album ingestion:
