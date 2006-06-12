@@ -113,6 +113,7 @@ class Track
     @featured_artists.flatten!
     @featured_artists.collect! { |string| string.split(/ and /) }
     @featured_artists.flatten!
+    @featured_artists.uniq!
   end
   
   def canonicalize_encoders!

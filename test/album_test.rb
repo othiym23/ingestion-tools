@@ -1,10 +1,10 @@
 $: << File.expand_path(File.join(File.dirname(__FILE__), '../lib'))
 
-require 'test/unit'
+require 'ingestion_case'
 require 'album'
 require 'dao/album_dao'
 
-class AlbumTest < Test::Unit::TestCase
+class AlbumTest < IngestionCase
   def setup
     @album = Album.new
   end
@@ -183,7 +183,7 @@ class AlbumTest < Test::Unit::TestCase
     1.4: Child Molester
       Featured: Mexican
     1.5: Boom Boom Claat
-      Featured: Cutty Ranks
+      Featured: Cutty Ranks, The Bug
     1.6: Imitator
       Featured: Daddy Freddy
     1.7: War Start
@@ -226,7 +226,7 @@ END
     1.2: WWW (feat. Mexican)
     1.3: Slew Dem (feat. Wayne Lonesome)
     1.4: Child Molester (feat. Mexican)
-    1.5: Boom Boom Claat (feat. Cutty Ranks)
+    1.5: Boom Boom Claat (feat. Cutty Ranks, The Bug)
     1.6: Imitator (feat. Daddy Freddy)
     1.7: War Start (feat. Bongo Chilli)
     1.8: Yard Man (feat. El Feco)
@@ -365,16 +365,5 @@ END
     assert_equal 'RAC', album.artist_name
     assert_equal 'Doublejointed', album.name
     assert_equal nil, album.genre
-  end
-  
-  private
-  
-  def load_albums(path)
-    album_paths = find_files(path)
-    AlbumDao.load_albums_from_paths(album_paths)
-  end
-
-  def find_files(path)
-    Dir.glob(File.join(File.expand_path('../../mp3info/sample-metadata'), path))
   end
 end

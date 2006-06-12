@@ -123,7 +123,7 @@ end
 class TrackId3Metadata < TrackMetadata
   attr_accessor :disc_number, :max_disc_number, :sequence, :max_sequence
   attr_accessor :genre, :release_date, :comment, :encoder, :compilation
-  attr_accessor :remix_name, :remixer, :album_artist_name
+  attr_accessor :remix_name, :remixer, :featured_artists, :album_artist_name
   attr_accessor :musicbrainz_artist_id, :musicbrainz_album_artist_id
   attr_accessor :musicbrainz_album_id, :musicbrainz_album_type
   attr_accessor :musicbrainz_album_status, :musicbrainz_album_release_country
@@ -154,6 +154,7 @@ class TrackId3Metadata < TrackMetadata
         id3.remix_name = reconcile_value(id3v2.remix_name)
         id3.album_name = reconcile_value(id3v2.album_name)
         id3.artist_name = reconcile_value(id3v2.artist_name)
+        id3.featured_artists = id3v2.featured_artists
 
         id3.disc_number, id3.max_disc_number = reconcile_value(id3v2.disc_set).split('/') if id3v2.disc_set
         id3.sequence, id3.max_sequence = reconcile_value(id3v2.sequence_info).split('/') if id3v2.sequence_info
@@ -189,9 +190,6 @@ class TrackId3Metadata < TrackMetadata
   def TrackId3Metadata.load_from_track(track)
     id3 = TrackId3Metadata.new
     
-    disc = track.disc
-    album = track.disc.album
-    
     id3.full_path = track.path
     id3.track_name = track.reconstituted_name
     id3.remix_name = track.remix
@@ -202,26 +200,33 @@ class TrackId3Metadata < TrackMetadata
     id3.encoder = track.encoder.join(' / ') if track.encoder
     
     id3.genre = track.genre
-    id3.compilation = album.compilation
     id3.release_date = track.release_date
     
     id3.unique_id = track.unique_id
     id3.musicbrainz_artist_id = track.musicbrainz_artist_id
 
-    id3.album_name = album.name
-    id3.disc_number = disc.number
-    id3.max_disc_number = album.number_of_discs
+    disc = track.disc
+    if disc
+      id3.disc_number = disc.number
+      id3.max_sequence = disc.number_of_tracks
 
-    id3.max_sequence = disc.number_of_tracks
+      album = disc.album
+      if album
+        id3.album_name = album.name
+        id3.album_sort_order = album.sort_order
 
-    id3.musicbrainz_album_id = album.musicbrainz_album_id
-    id3.musicbrainz_album_type = album.musicbrainz_album_type
-    id3.musicbrainz_album_status = album.musicbrainz_album_status
-    id3.musicbrainz_album_release_country = album.musicbrainz_album_release_country
-    id3.musicbrainz_album_artist_id = album.musicbrainz_album_artist_id
+        id3.compilation = album.compilation
+        id3.max_disc_number = album.number_of_discs
+
+        id3.musicbrainz_album_id = album.musicbrainz_album_id
+        id3.musicbrainz_album_type = album.musicbrainz_album_type
+        id3.musicbrainz_album_status = album.musicbrainz_album_status
+        id3.musicbrainz_album_release_country = album.musicbrainz_album_release_country
+        id3.musicbrainz_album_artist_id = album.musicbrainz_album_artist_id
+      end
+    end
 
     id3.artist_sort_order = track.artist_sort_order
-    id3.album_sort_order = album.sort_order
     id3.track_sort_order = track.sort_order
 
     id3
@@ -238,6 +243,7 @@ class TrackId3Metadata < TrackMetadata
       id3v2.remix_name = remix_name if remix_name && '' != remix_name
       id3v2.album_name = album_name if album_name && '' != album_name
       id3v2.artist_name = artist_name if artist_name && '' != artist_name
+      id3v2.featured_artists = featured_artists if featured_artists && featured_artists.size > 0
 
       id3v2.disc_set = "#{disc_number}/#{max_disc_number}" if disc_number && max_disc_number
       id3v2.sequence_info = "%02d" % sequence if sequence && '' != sequence

@@ -105,6 +105,39 @@ class Mp3InfoId3v23Tag < Mp3InfoFactory
     @tag.TPE1 = value
   end
   
+  def featured_artists
+    featured = []
+
+    involved_people = @tag.TXXX
+    if involved_people
+      if involved_people.is_a?(Array)
+        involved_people.each do |candidate|
+          next unless candidate.description == 'Featured Performer'
+          featured << candidate.value
+        end
+      else
+        if 'Featured Performer' == involved_people.description
+          featured << involved_people.value
+        end
+      end
+    end
+    featured
+  end
+  
+  def featured_artists=(value)
+    if value.is_a?(Array)
+      value.each do |performer|
+        featured_frame = ID3V24::Frame.create_frame('TXXX', performer)
+        featured_frame.description = 'Featured Performer'
+        @tag.TXXX << featured_frame
+      end
+    else
+      featured_frame = ID3V24::Frame.create_frame('TXXX', value)
+      featured_frame.description = 'Featured Performer'
+      @tag.TXXX << featured_frame
+    end
+  end
+
   def remixer
     @tag.TPE4
   end
@@ -255,6 +288,44 @@ class Mp3InfoId3v24Tag < Mp3InfoId3v23Tag
   def release_date=(value)
     @tag.TYER = value
   end
+  
+  def featured_artists
+    featured = []
+  
+    involved_people = @tag.TIPL
+    if involved_people
+      if involved_people.is_a?(Array)
+        while true
+          role_frame = involved_people.shift
+          break unless role_frame
+          next unless 'Featured Performer' == role_frame.value
+  
+          featured_candidate = involved_people.shift
+          unless featured_candidate && 
+                 'Featured Performer' != featured_candidate.value
+            raise IOError.new("badly-formatted featured performer list")
+          end
+  
+          featured << featured_candidate.value
+        end
+      end
+    end
+    featured
+  end
+  
+  def featured_artists=(value)
+    performer_list = []
+    if value.is_a?(Array)
+      value.each do |performer|
+        performer_list << 'Featured Performer'
+        performer_list << performer
+      end
+    else
+      performer_list << 'Featured Performer'
+      performer_list << value
+    end
+    @tag.TIPL = performer_list if performer_list.size > 0
+  end
 end
 
 class Mp3InfoId3v22Tag < Mp3InfoFactory
@@ -294,6 +365,39 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
     @tag.TP1 = value
   end
   
+  def featured_artists
+    featured = []
+
+    involved_people = @tag.TXX
+    if involved_people
+      if involved_people.is_a?(Array)
+        involved_people.each do |candidate|
+          next unless candidate.description == 'Featured Performer'
+          featured << candidate.value
+        end
+      else
+        if 'Featured Performer' == involved_people.description
+          featured << involved_people.value
+        end
+      end
+    end
+    featured
+  end
+  
+  def featured_artists=(value)
+    if value.is_a?(Array)
+      value.each do |performer|
+        featured_frame = ID3V24::Frame.create_frame('TXX', performer)
+        featured_frame.description = 'Featured Performer'
+        @tag.TXX << featured_frame
+      end
+    else
+      featured_frame = ID3V24::Frame.create_frame('TXX', value)
+      featured_frame.description = 'Featured Performer'
+      @tag.TXX << featured_frame
+    end
+  end
+
   def remixer
     @tag.TP4
   end

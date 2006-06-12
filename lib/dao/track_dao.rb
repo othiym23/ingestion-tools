@@ -28,6 +28,7 @@ class TrackDao
     
     @track.sort_order = @id3.track_sort_order
     @track.artist_sort_order = @id3.artist_sort_order
+    @track.featured_artists = @id3.featured_artists
     
     @track.set_remix!
     @track.set_featured_artists!
@@ -35,6 +36,11 @@ class TrackDao
     @track.set_sort_order!
     @track.canonicalize_encoders!
     @track.canonicalize_comments!
+  end
+  
+  def TrackDao.save(track)
+    id3 = TrackId3Metadata.load_from_track(track)
+    id3.save
   end
   
   def TrackDao.archive_mp3_from_track_dao(archive_root, track_dao)
@@ -138,6 +144,7 @@ class TrackDao
     id3.track_name = track.reconstituted_name
     id3.remix_name = track.remix
     id3.artist_name = track.artist_name
+    id3.featured_artists = track.featured_artists
     id3.sequence = track.sequence
     
     id3.comment = track.comment

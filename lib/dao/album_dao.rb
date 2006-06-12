@@ -126,6 +126,12 @@ class AlbumDao
     albums.values
   end
   
+  def AlbumDao.save(album)
+    album.tracks.each do
+      TrackDao.save(track)
+    end
+  end
+  
   def archive_album(album)
     if !already_in_archive?(album)
       album.tracks.each do |track|

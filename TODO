@@ -15,7 +15,6 @@ management console:
 * match artists against Netjuke
 
 album ingestion:
-* handle featured artists from frames
 * split consolidated multi-disc albums back into their discs
 * fetch Musicbrainz annotations from server
 * classical support:
@@ -28,8 +27,9 @@ heuristic metadata correction:
 * correctly handle split albums with "Artist 1 / Artist 2" titles
 * improve encoder cattle-catcher to do something different with 
   release codes (i.e. not sticking them on the encoder string)
+* handle "pretty" display of featured artist list
 
 code quality:
 * document all heuristics used in code base
 * collect and / or remedy all inline TODOS
-* bump up coverage of core album ingestion framework
+* improve overall code coverage to over 95%

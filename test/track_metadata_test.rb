@@ -2,14 +2,14 @@ $: << File.expand_path(File.join(File.dirname(__FILE__), '../lib'))
 
 require 'fileutils'
 
-require 'test/unit'
+require 'ingestion_case'
 require 'album'
 require 'disc'
 require 'track'
 require 'track_metadata'
 require 'path_utils'
 
-class TrackMetadataTest < Test::Unit::TestCase
+class TrackMetadataTest < IngestionCase
   def test_find_path_artist
     assert_equal 'Eminem',
                  TrackPathMetadata.load_from_path('./Eminem/Encore/Eminem - Encore - 01 - Curtains Up Encore Version.aac').album_artist_name
@@ -101,7 +101,26 @@ class TrackMetadataTest < Test::Unit::TestCase
       
       saved_id3 = TrackId3Metadata.load_from_path(file)
       
-      assert_equal 'The Bug', saved_id3.remixer, "remixer should survive being saved"
+      assert_equal 'The Bug', saved_id3.remixer,
+                   "remixer should survive being saved"
+    end
+  end
+  
+  def test_id3_featured_artists
+    stage_mp3('Razor X Productions/Killing Sound [disc 1]/Razor X Productions - Killing Sound [disc 1] - 05 - Boom Boom Claat (feat. Cutty Ranks).mp3') do |file|
+      id3 = TrackId3Metadata.load_from_path(file)
+      assert_equal 2, id3.featured_artists.size
+      assert_equal ['Cutty Ranks', 'The Bug'], id3.featured_artists,
+                   "featured artists should be found on load"
+      id3.featured_artists = []
+      id3.featured_artists << 'Shabba Ranks'
+      id3.featured_artists << 'Daddy Freddy'
+      
+      id3.save
+      
+      saved_id3 = TrackId3Metadata.load_from_path(file)
+      assert_equal ['Shabba Ranks', 'Daddy Freddy'], saved_id3.featured_artists,
+                   "featured artists should survive being saved"
     end
   end
   
@@ -115,24 +134,6 @@ class TrackMetadataTest < Test::Unit::TestCase
       saved_id3 = TrackId3Metadata.load_from_path(file)
       
       assert_equal 'original version', saved_id3.remix_name, "remix name should survive being saved"
-    end
-  end
-  
-  private
-  
-  def stage_mp3(relative_path)
-    staging_dir = 'staging'
-    source_file = File.join(File.expand_path('../../mp3info/sample-metadata/'),
-                            relative_path)
-    staging_file = File.join(staging_dir, relative_path)
-
-    begin
-      FileUtils.mkdir(staging_dir)
-      PathUtils.safe_copy(source_file, staging_file)
-      
-      yield(staging_file)
-    ensure
-      FileUtils.rmtree(staging_dir)
     end
   end
 end
