@@ -8,6 +8,7 @@ class Track
   attr_accessor :remix, :featured_artists, :release_date
   attr_accessor :unique_id, :musicbrainz_artist_id
   attr_accessor :sort_order, :artist_sort_order
+  attr_accessor :image
   
   def initialize(path)
     @path = path

@@ -106,6 +106,19 @@ class TrackMetadataTest < IngestionCase
     end
   end
   
+  def test_id3_remix_name
+    stage_mp3('Razor X Productions/Killing Sound [disc 1]/Razor X Productions - Killing Sound [disc 1] - 05 - Boom Boom Claat (feat. Cutty Ranks).mp3') do |file|
+      id3 = TrackId3Metadata.load_from_path(file) 
+      id3.remix_name = 'original version'
+      
+      id3.save
+      
+      saved_id3 = TrackId3Metadata.load_from_path(file)
+      
+      assert_equal 'original version', saved_id3.remix_name, "remix name should survive being saved"
+    end
+  end
+  
   def test_id3_featured_artists
     stage_mp3('Razor X Productions/Killing Sound [disc 1]/Razor X Productions - Killing Sound [disc 1] - 05 - Boom Boom Claat (feat. Cutty Ranks).mp3') do |file|
       id3 = TrackId3Metadata.load_from_path(file)
@@ -124,16 +137,50 @@ class TrackMetadataTest < IngestionCase
     end
   end
   
-  def test_id3_remix_name
-    stage_mp3('Razor X Productions/Killing Sound [disc 1]/Razor X Productions - Killing Sound [disc 1] - 05 - Boom Boom Claat (feat. Cutty Ranks).mp3') do |file|
-      id3 = TrackId3Metadata.load_from_path(file) 
-      id3.remix_name = 'original version'
+  def test_id3_attached_picture
+    stage_mp3('RAC/Double Jointed/03 - RAC - Nine.mp3') do |file|
+      id3 = TrackId3Metadata.load_from_path(file)
+
+      assert id3.album_image,
+             "this file definitely had an image in it at one time"
+      assert_equal 'image/jpg', id3.album_image.mime_type
+      assert_equal 'Cover (front)', id3.album_image.picture_type_name
+      assert_equal 5013, id3.album_image.value.length
+      
+      id3.album_image.picture_type_name = 'Other'
+      id3.album_image.mime_type = 'image/png'
       
       id3.save
       
       saved_id3 = TrackId3Metadata.load_from_path(file)
+
+      assert saved_id3.album_image,
+             "this file definitely had an image in it at one time"
+      assert_equal 'image/png', saved_id3.album_image.mime_type
+      assert_equal 'Other', saved_id3.album_image.picture_type_name
+      assert_equal 5013, saved_id3.album_image.value.length
       
-      assert_equal 'original version', saved_id3.remix_name, "remix name should survive being saved"
+      cover_image = saved_id3.album_image
+      cover_image.picture_type_name = 'Cover (front)'
+      cover_image.mime_type = 'image/jpg'
+      saved_id3.album_image = nil
+      
+      saved_id3.save
+      
+      reheated_id3 = TrackId3Metadata.load_from_path(file)
+      
+      assert_equal nil, reheated_id3.album_image
+      reheated_id3.album_image = cover_image
+      
+      reheated_id3.save
+      
+      rehashed_id3 = TrackId3Metadata.load_from_path(file)
+
+      assert rehashed_id3.album_image,
+             "this file definitely had an image in it at one time"
+      assert_equal 'image/jpg', rehashed_id3.album_image.mime_type
+      assert_equal 'Cover (front)', rehashed_id3.album_image.picture_type_name
+      assert_equal 5013, rehashed_id3.album_image.value.length
     end
   end
 end

@@ -31,8 +31,7 @@ class IngestionCase < Test::Unit::TestCase
     Dir.glob(File.join(File.expand_path('../../mp3info/sample-metadata'), path))
   end
   
-  def stage_mp3(relative_path)
-    staging_dir = 'staging'
+  def stage_mp3(relative_path, staging_dir = 'staging')
     source_file = File.join(File.expand_path('../../mp3info/sample-metadata/'),
                             relative_path)
     staging_file = File.join(staging_dir, relative_path)

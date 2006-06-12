@@ -29,6 +29,7 @@ class TrackDao
     @track.sort_order = @id3.track_sort_order
     @track.artist_sort_order = @id3.artist_sort_order
     @track.featured_artists = @id3.featured_artists
+    @track.image = @id3.album_image
     
     @track.set_remix!
     @track.set_featured_artists!
@@ -145,6 +146,7 @@ class TrackDao
     id3.remix_name = track.remix
     id3.artist_name = track.artist_name
     id3.featured_artists = track.featured_artists
+    id3.album_image = track.image
     id3.sequence = track.sequence
     
     id3.comment = track.comment

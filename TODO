@@ -13,6 +13,7 @@ management console:
 * load list of genres from database and canonicalize if not direct match
 * match artists against existing archive
 * match artists against Netjuke
+* associate arbitrary image with track
 
 album ingestion:
 * split consolidated multi-disc albums back into their discs

@@ -50,6 +50,47 @@ class TrackTest < IngestionCase
     end
   end
   
+  def test_image_loading
+    track = load_track('RAC/Double Jointed/03 - RAC - Nine.mp3')
+
+    assert track.image,
+           "this track definitely had an image associated with it at one time"
+    assert_equal 'image/jpg', track.image.mime_type
+    assert_equal 'Cover (front)', track.image.picture_type_name
+    assert_equal 5013, track.image.value.length
+  end
+  
+  def test_image_transferral
+    stage_mp3('RAC/Double Jointed/03 - RAC - Nine.mp3') do |original|
+      source = load_staged_track(original)
+      
+      stage_mp3('Razor X Productions/Killing Sound [disc 1]/Razor X Productions - Killing Sound [disc 1] - 05 - Boom Boom Claat (feat. Cutty Ranks).mp3',
+                'staging2') do |target|
+        destination = load_staged_track(target)
+        destination.image = source.image
+        
+        assert destination.image,
+               "this track definitely had an image associated with it at one time"
+        assert_equal 'image/jpg', destination.image.mime_type
+        assert_equal 'Cover (front)', destination.image.picture_type_name
+        assert_equal 5013, destination.image.value.length
+        assert_equal source.image, destination.image
+
+        TrackDao.save(destination)
+
+        saved_track = load_staged_track(target)
+
+        assert saved_track.image,
+               "this track definitely had an image associated with it at one time"
+        assert_equal 'image/jpg', saved_track.image.mime_type
+        assert_equal 'Cover (front)', saved_track.image.picture_type_name
+        assert_equal 5013, saved_track.image.value.length
+        
+        assert_equal destination.image, saved_track.image
+      end
+    end
+  end
+  
   def test_standard_remix_parsing
     track = load_track('Aphex Twin/Ventolin/Aphex Twin - Ventolin - 01 - Ventolin Salbutamol Mix.mp3')
 

@@ -229,6 +229,14 @@ class Mp3InfoId3v23Tag < Mp3InfoFactory
     @tag.XSOP = value
   end
   
+  def album_image
+    @tag.APIC
+  end
+  
+  def album_image=(value)
+    @tag.APIC = value
+  end
+  
   protected
   
   def musicbrainz_getter(property_name)
@@ -489,6 +497,14 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
   
   def artist_sort_order=(value)
     @tag.XSP = value
+  end
+  
+  def album_image
+    @tag.PIC
+  end
+  
+  def album_image=(value)
+    @tag.PIC = value
   end
   
   protected

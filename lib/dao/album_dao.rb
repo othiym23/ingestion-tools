@@ -54,6 +54,7 @@ class AlbumDao
       genres = []
       years = []
       musicbrainz_artist_ids = []
+      images = []
       
       album.set_mixer!
       album.set_encoder_from_comments!
@@ -66,6 +67,7 @@ class AlbumDao
           genres << track.genre
           years << track.release_date
           musicbrainz_artist_ids << track.musicbrainz_artist_id
+          images << track.image
         end
       end
       
@@ -120,6 +122,18 @@ class AlbumDao
       # HEURISTIC: albums coming out of most rippers are only set to have 1 disc
       if !album.number_of_discs || (album.number_of_discs < album.number_of_discs_loaded)
         album.number_of_discs = album.number_of_discs_loaded 
+      end
+      
+      # HEURISTIC: if we have any images for this album and some tracks are
+      # lacking an image, assign them one arbitrarily
+      if 1 <= images.compact.uniq.size
+        album_image = images.compact.first
+      end
+      
+      if album_image
+        album.tracks.each do |track|
+          track.image = album_image unless track.image
+        end
       end
     end
     
