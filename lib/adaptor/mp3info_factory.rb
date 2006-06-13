@@ -97,6 +97,22 @@ class Mp3InfoId3v23Tag < Mp3InfoFactory
     @tag.TALB = value
   end
   
+  def album_subtitle
+    user_defined('Album Subtitle')
+  end
+  
+  def album_subtitle=(value)
+    user_defined_set('Album Subtitle', value)
+  end
+
+  def album_version
+    user_defined('Album Version')
+  end
+  
+  def album_version=(value)
+    user_defined_set('Album Version', value)
+  end
+
   def artist_name
     @tag.TPE1
   end
@@ -106,36 +122,11 @@ class Mp3InfoId3v23Tag < Mp3InfoFactory
   end
   
   def featured_artists
-    featured = []
-
-    involved_people = @tag.TXXX
-    if involved_people
-      if involved_people.is_a?(Array)
-        involved_people.each do |candidate|
-          next unless candidate.description == 'Featured Performer'
-          featured << candidate.value
-        end
-      else
-        if 'Featured Performer' == involved_people.description
-          featured << involved_people.value
-        end
-      end
-    end
-    featured
+    user_defined_list('Featured Performer')
   end
   
   def featured_artists=(value)
-    if value.is_a?(Array)
-      value.each do |performer|
-        featured_frame = ID3V24::Frame.create_frame('TXXX', performer)
-        featured_frame.description = 'Featured Performer'
-        @tag.TXXX << featured_frame
-      end
-    else
-      featured_frame = ID3V24::Frame.create_frame('TXXX', value)
-      featured_frame.description = 'Featured Performer'
-      @tag.TXXX << featured_frame
-    end
+    user_defined_set('Featured Performer', value)
   end
 
   def remixer
@@ -262,6 +253,44 @@ class Mp3InfoId3v23Tag < Mp3InfoFactory
       end
     end
   end
+  
+  def user_defined_list(content_description)
+    returned = []
+
+    user_frames = @tag.TXXX
+    if user_frames
+      if user_frames.is_a?(Array)
+        user_frames.each do |candidate|
+          next unless candidate.description == content_description
+          returned << candidate.value
+        end
+      else
+        if content_description == user_frames.description
+          returned << user_frames.value
+        end
+      end
+    end
+    returned if returned.size > 0
+  end
+  
+  def user_defined(content_description)
+    returned = user_defined_list(content_description)
+    returned.compact.uniq.first if returned
+  end
+  
+  def user_defined_set(content_description, value)
+    if value.is_a?(Array)
+      value.each do |element|
+        user_frame = ID3V24::Frame.create_frame('TXXX', element)
+        user_frame.description = content_description
+        @tag.TXXX << featured_frame
+      end
+    else
+      user_frame = ID3V24::Frame.create_frame('TXXX', value)
+      user_frame.description = content_description
+      @tag.TXXX << featured_frame
+    end
+  end
 end
 
 class Mp3InfoId3v24Tag < Mp3InfoId3v23Tag
@@ -365,6 +394,22 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
     @tag.TAL = value
   end
   
+  def album_subtitle
+    user_defined('Album Subtitle')
+  end
+  
+  def album_subtitle=(value)
+    user_defined_set('Album Subtitle', value)
+  end
+
+  def album_version
+    user_defined('Album Version')
+  end
+  
+  def album_version=(value)
+    user_defined_set('Album Version', value)
+  end
+
   def artist_name
     @tag.TP1
   end
@@ -374,36 +419,11 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
   end
   
   def featured_artists
-    featured = []
-
-    involved_people = @tag.TXX
-    if involved_people
-      if involved_people.is_a?(Array)
-        involved_people.each do |candidate|
-          next unless candidate.description == 'Featured Performer'
-          featured << candidate.value
-        end
-      else
-        if 'Featured Performer' == involved_people.description
-          featured << involved_people.value
-        end
-      end
-    end
-    featured
+    user_defined_list('Featured Performer')
   end
   
   def featured_artists=(value)
-    if value.is_a?(Array)
-      value.each do |performer|
-        featured_frame = ID3V24::Frame.create_frame('TXX', performer)
-        featured_frame.description = 'Featured Performer'
-        @tag.TXX << featured_frame
-      end
-    else
-      featured_frame = ID3V24::Frame.create_frame('TXX', value)
-      featured_frame.description = 'Featured Performer'
-      @tag.TXX << featured_frame
-    end
+    user_defined_set('Featured Performer', value)
   end
 
   def remixer
@@ -529,6 +549,44 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
       else
         @tag.TXX = [@tag.TXX, txx]
       end
+    end
+  end
+  
+  def user_defined_list(content_description)
+    returned = []
+
+    user_frames = @tag.TXX
+    if user_frames
+      if user_frames.is_a?(Array)
+        user_frames.each do |candidate|
+          next unless candidate.description == content_description
+          returned << candidate.value
+        end
+      else
+        if content_description == user_frames.description
+          returned << user_frames.value
+        end
+      end
+    end
+    returned if returned.size > 0
+  end
+  
+  def user_defined(content_description)
+    returned = user_defined_list(content_description)
+    returned.compact.uniq.first if returned
+  end
+  
+  def user_defined_set(content_description, value)
+    if value.is_a?(Array)
+      value.each do |element|
+        user_frame = ID3V24::Frame.create_frame('TXX', element)
+        user_frame.description = content_description
+        @tag.TXX << featured_frame
+      end
+    else
+      user_frame = ID3V24::Frame.create_frame('TXX', value)
+      user_frame.description = content_description
+      @tag.TXX << featured_frame
     end
   end
 end

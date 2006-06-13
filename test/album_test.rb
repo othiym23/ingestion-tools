@@ -366,4 +366,22 @@ END
     assert_equal 'Doublejointed', album.name
     assert_equal nil, album.genre
   end
+  
+  def test_album_with_version
+    albums = load_albums("Wire/Chairs Missing*/*.mp3")
+
+    album = albums.first
+    assert_equal 'Chairs Missing', album.name
+    assert_equal 'Japanese version', album.version_name
+    assert_equal 'Chairs Missing [Japanese version]', album.reconstituted_name
+  end
+  
+  def test_album_with_subtitle
+    albums = load_albums("Various Artists/The Celluloid Years*/*.mp3")
+
+    album = albums.first
+    assert_equal 'The Celluloid Years', album.name
+    assert_equal '12"s And MORE...', album.subtitle
+    assert_equal 'The Celluloid Years: 12"s And MORE...', album.reconstituted_name
+  end
 end

@@ -14,10 +14,15 @@ management console:
 * match artists against Netjuke
 * canonicalize track genres against Netjuke genre list
 * associate arbitrary image with track
+* support the cobbling-together of new albums from old albums (e.g. making
+  Wire's "Behind the Curtain" out of bonus tracks on Japanese releases of
+  the first three albums)
 
 album ingestion:
 * split consolidated multi-disc albums back into their discs
 * fetch Musicbrainz annotations from server
+* support album versions
+* support album subtitles
 * classical support:
 ** add reading and writing of ID3v2 fields related to orchestral and
    ensemble music (composer, conductor, soloists, ensembles)
@@ -28,7 +33,7 @@ heuristic metadata correction:
 * correctly handle split albums with "Artist 1 / Artist 2" titles
 * improve encoder cattle-catcher to do something different with 
   release codes (i.e. not sticking them on the encoder string)
-* handle "pretty" display of featured artist list
+* handle "pretty" canonicalization of featured artist list
 
 code quality:
 * document all heuristics used in code base

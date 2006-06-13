@@ -74,6 +74,14 @@ class TrackDao
     @path.album_name
   end
   
+  def album_subtitle
+    @id3.album_subtitle
+  end
+  
+  def album_version
+    @id3.album_version
+  end
+  
   # HEURISTIC: to keep things like loose MP3 directories from going ape crazy,
   # create a hash based on munged values for the artist name from the
   # path and the album name, whatever it may be
@@ -136,6 +144,8 @@ class TrackDao
     track = dao.track
     
     id3.album_name = dao.album_name
+    id3.album_subtitle = dao.album_subtitle
+    id3.album_version = dao.album_version
     id3.disc_number = dao.disc_number
     id3.max_disc_number = dao.number_of_discs_in_set
 

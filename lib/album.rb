@@ -1,7 +1,7 @@
 require 'string_utils'
 
 class Album
-  attr_accessor :name, :artist_name
+  attr_accessor :name, :subtitle, :version_name, :artist_name
   attr_accessor :discs, :number_of_discs
   attr_accessor :genre, :release_date, :compilation, :mixer
   attr_accessor :musicbrainz_album_id, :musicbrainz_album_artist_id
@@ -101,8 +101,38 @@ class Album
   def capitalize_names!
     @artist_name = StringUtils.mixed_case(@artist_name)
     @name = StringUtils.mixed_case(@name)
+    @subtitle = StringUtils.mixed_case(@subtitle)
     @genre = StringUtils.mixed_case(@genre)
     @mixer = StringUtils.mixed_case(@mixer)
+    @version_name = StringUtils.mixed_case(@version_name)
+    @version_name.gsub!(/(\A|\s)(Version|Release)\b/) {|string| string.downcase} if @version_name
+  end
+  
+  # HEURISTIC: sometimes I have multiple versions of records and like to
+  # differentiate them by tacking the version name onto the title within
+  # square brackets
+  def set_version_name!
+    if patterns = @name.match(/^(.*) \[(.*)\](.*)$/)
+      @name = patterns[1] << patterns[3]
+      @version_name = patterns[2]
+    end
+  end
+  
+  # HEURISTIC: subtitles follow colons, following certain rules
+  def set_subtitle!
+    if patterns = @name.match(/\A([^\b:]+): (.+)\Z/)
+      @name = patterns[1]
+      @subtitle = patterns[2]
+    end
+  end
+  
+  def reconstituted_name
+    reconstituted = ''
+    reconstituted << @name
+    reconstituted << ': ' << @subtitle if @subtitle
+    reconstituted << ' [' << @version_name << ']' if @version_name
+    
+    reconstituted
   end
   
   def display_formatted(simple = false)
@@ -110,10 +140,20 @@ class Album
     formatted_album = ''
 
     formatted_album << "[#{release_date}] " if release_date
-    formatted_album << "#{artist_name}: #{name}"
+    unless simple
+      formatted_album << "#{artist_name}: #{name}"
+    else
+      formatted_album << "#{artist_name}: #{reconstituted_name}"
+    end
     formatted_album << " (#{genre})" if genre
     formatted_album << "\n"
-    formatted_album << "    Mixed by #{mixer}\n" if mixer
+    unless simple
+      album_attributes = []
+      album_attributes << ["Subtitle:", subtitle] if subtitle
+      album_attributes << ["Album version:", version_name] if version_name
+      album_attributes << ["Mixed by:", mixer] if mixer
+      formatted_album << justify_attribute_list(album_attributes)
+    end
     formatted_album << "\n"
 
     discs.compact.each do |disc|
@@ -132,7 +172,7 @@ class Album
 
         formatted_album << out
 
-        if !simple
+        unless simple
           comments =  track.format_comments
 
           track_attributes = []

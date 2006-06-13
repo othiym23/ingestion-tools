@@ -147,7 +147,7 @@ class Track
   # Track Name (feat. Featured Artist) [Named remix]
   def reconstituted_name
     reconstituted = ''
-    reconstituted << name
+    reconstituted << @name
     reconstituted << " (feat. #{featured_artists.join(', ')})" if featured_artists.size > 0
     reconstituted << " [#{remix}]" if remix && remix != ''
     
