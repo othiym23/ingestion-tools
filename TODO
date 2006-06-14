@@ -3,10 +3,7 @@ management console:
 ** cache pending album list in holding database
 ** write periodic task to rebuild pending album cache
 ** write periodic task to connect to MusicBrainz and try to match unmatched tracks
-* validate number of tracks in set vs number of tracks loaded
 * add random album processing
-* flag unmarked compilations (correction already handled)
-* flag presence of ID3v1 tag (deletion already handled)
 * prompt to compare two albums
 * prompt to replace and / or remove one of the two albums
 * load list of genres from database and canonicalize if not direct match
@@ -34,6 +31,36 @@ heuristic metadata correction:
 * improve encoder cattle-catcher to do something different with 
   release codes (i.e. not sticking them on the encoder string)
 * handle "pretty" canonicalization of featured artist list
+
+audio file validation / QA:
+* build a façade over existing ingestion framework that's observable by
+  the validation framework
+* create validation checkers from criteria:
+** path not in artist/album/track format
+** path doesn't match metadata
+** path name isn't in canonical form
+** filename doesn't match metadata
+** filename isn't in canonical form
+** track contains APE tag
+** track has ID3v1 tag
+** track has ID3v2.2 tag
+** track has ID3v2.3 tag (less severe)
+** ID3v1 and ID3v2 metadata don't match
+** track LAME header is missing
+** track LAME version is not 3.93.1 or 3.96
+** track is not VBR encoded OR track is CBR and encoded at less than 256kbps
+** track LAME method used was not --preset standard or --alt-preset standard
+** track has duplicate ID3v2 frames
+** track has multiple conflicting frames for same (singular) attribute
+** names are improperly capitalized
+** track has non-handled standard frames
+** track has nonstandard frames
+** track has nonstandard, non-Apple frames
+** album is missing tracks (tracks loaded vs tracks on album discrepancy)
+** release is a compilation but not marked as such
+** track metadata is not canonicalized / populated according to ingestion
+   system standards
+** track is lacking MusicBrainz metadata
 
 code quality:
 * document all heuristics used in code base
