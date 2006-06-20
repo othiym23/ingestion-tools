@@ -1,0 +1,84 @@
+#!/usr/bin/env ruby
+script_path = __FILE__
+script_path = File.readlink(script_path) if File.symlink?(script_path)
+
+$: << File.join(File.dirname(script_path), '../lib')
+
+require 'path_utils'
+require 'dao/album_dao'
+require 'adaptor/euterpe_dashboard_factory'
+
+PENDING_BASE = '/data/music/holding/pending'
+raise IOError.new("pending media folder #{PENDING_BASE} does not exist!") unless File.exists?(PENDING_BASE)
+
+def find_pending_artist_directories(archive_base)
+  Dir.glob(File.join(archive_base, '*'))
+end
+
+def find_files_in_artist_directory(artist_directory)
+  Dir.glob(File.join(artist_directory, '**', '*')).select{ |entry| File.file?(entry) }
+end
+
+def find_pending_other_files(artist_directory)
+  found = find_files_in_artist_directory(artist_directory).reject { |entry| '.mp3' == File.extname(entry) }
+  if found != []
+    found
+  else
+    nil
+  end
+end
+
+def find_pending_audio_files(artist_directory)
+  raw_files = find_files_in_artist_directory(artist_directory)
+  unbucketized_mp3s = raw_files.select { |entry| '.mp3' == File.extname(entry) }
+  DiscDao.find_changed_paths(unbucketized_mp3s)
+end
+
+def process_other_files(files)
+  changed_files = []
+
+  files.flatten.compact.each do |entry|
+    MediaPathDao.cache_file(entry) and (changed_files << entry)
+  end
+  
+  changed_files
+end
+
+def cache_pending_media(archive_base)
+  non_media_files = []
+  updated_tracks = []
+
+  find_pending_artist_directories(archive_base).each do |artist_folder|
+    non_media_files += find_pending_other_files(artist_folder)
+    audio_paths = find_pending_audio_files(artist_folder)
+
+    AlbumDao.load_albums_from_paths(audio_paths).each do |found_album|
+      updated_tracks += AlbumDao.cache_album(found_album)
+    end
+  end
+  
+  if updated_tracks.size > 0
+    puts "::AOAIOXXYSZ:: music archive management system, v1: #{updated_tracks.size} tracks added" 
+    puts '  freshly cached:' 
+    updated_tracks.sort{|tl,tr| tl.artist_name + tl.name <=> tr.artist_name + tr.name}.each do |track|
+      puts "    #{track.artist_name} - #{track.name}"
+    end
+
+  updated_files = process_other_files(non_media_files)
+  if 0 < updated_files.size
+    puts "\n  updated non-audio files in pending:"
+    
+    updated_files.sort.each do |filename|
+      puts '    ' << filename
+    end
+  end
+end
+
+ActiveRecord::Base.establish_connection(
+  :adapter  => "postgresql",
+  :username => "ogd",
+  :database => "euterpe-dash-dev",
+  :encoding => "SQL_ASCII"
+)
+
+cache_pending_media(PENDING_BASE)

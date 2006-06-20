@@ -14,7 +14,7 @@ class IngestionCase < Test::Unit::TestCase
   protected
 
   def load_track(path)
-    track_path = File.join(File.expand_path('../../mp3info/sample-metadata'), path)
+    track_path = File.join(File.expand_path(File.dirname(__FILE__) + '/../../mp3info/sample-metadata'), path)
     TrackDao.new(track_path).track
   end
   
@@ -28,11 +28,11 @@ class IngestionCase < Test::Unit::TestCase
   end
 
   def find_files(path)
-    Dir.glob(File.join(File.expand_path('../../mp3info/sample-metadata'), path))
+    Dir.glob(File.join(File.expand_path(File.dirname(__FILE__) + '/../../mp3info/sample-metadata'), path))
   end
   
   def stage_mp3(relative_path, staging_dir = 'staging')
-    source_file = File.join(File.expand_path('../../mp3info/sample-metadata/'),
+    source_file = File.join(File.expand_path(File.dirname(__FILE__) + '/../../mp3info/sample-metadata/'),
                             relative_path)
     staging_file = File.join(staging_dir, relative_path)
 

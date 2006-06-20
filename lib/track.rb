@@ -42,6 +42,11 @@ class Track
       @remix = patterns[2]
     end
 
+    if patterns = @name.match(/^(.*) \((.*[Ll]ive)\)$/)
+      @name = patterns[1] << patterns[3]
+      @remix = patterns[2]
+    end
+
     if patterns = @name.match(/^(.*) \((.*[Ii]nstrumental)\)(.*)$/)
       @name = patterns[1] << patterns[3]
       @remix = patterns[2]
@@ -103,7 +108,7 @@ class Track
       @featured_artists << patterns[3]
     end
 
-    if patterns = @artist_name.match(/^(.*) [Ww]ith (.*)$/)
+    if patterns = @artist_name.match(/^(.*) with (.*)$/)
       @artist_name = patterns[1]
       @featured_artists << patterns[2]
     end

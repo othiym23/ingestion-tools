@@ -1,15 +1,12 @@
 management console:
 * manage pending content:
-** cache pending album list in holding database
-** write periodic task to rebuild pending album cache
 ** write periodic task to connect to MusicBrainz and try to match unmatched tracks
 * add random album processing
 * prompt to compare two albums
-* prompt to replace and / or remove one of the two albums
-* load list of genres from database and canonicalize if not direct match
-* match artists against existing archive
-* match artists against Netjuke
+* support the replacement of an album already existing in the archive with a
+  better version
 * canonicalize track genres against Netjuke genre list
+* canonicalize artist names against existing archive
 * associate arbitrary image with track
 * support the cobbling-together of new albums from old albums (e.g. making
   Wire's "Behind the Curtain" out of bonus tracks on Japanese releases of
@@ -17,9 +14,7 @@ management console:
 
 album ingestion:
 * split consolidated multi-disc albums back into their discs
-* fetch Musicbrainz annotations from server
-* support album versions
-* support album subtitles
+* acquire MusicBrainz metadata
 * classical support:
 ** add reading and writing of ID3v2 fields related to orchestral and
    ensemble music (composer, conductor, soloists, ensembles)

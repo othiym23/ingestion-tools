@@ -1,4 +1,5 @@
-$: << File.expand_path(File.join(File.dirname(__FILE__), '../lib'))
+$: << File.expand_path(File.join(File.dirname(__FILE__), '..'))
+$: << File.expand_path(File.join(File.dirname(__FILE__), '../../lib'))
 
 require 'ingestion_case'
 require 'album'
@@ -14,7 +15,7 @@ class AlbumTest < IngestionCase
   end
 
   def test_default_album_from_path
-    track_path = [ '../../mp3info/sample-metadata/zovietfrance/Popular Soviet Songs And Youth Music disc 3/zovietfrance - Popular Soviet Songs And Youth Music - 07 - Charm Aliso.mp3' ]
+    track_path = [ '../mp3info/sample-metadata/zovietfrance/Popular Soviet Songs And Youth Music disc 3/zovietfrance - Popular Soviet Songs And Youth Music - 07 - Charm Aliso.mp3' ]
     albums = AlbumDao.load_albums_from_paths(track_path)
 
     assert_equal 1, albums.first.number_of_discs_loaded
@@ -294,7 +295,7 @@ END
 [2005] Various Artists: The Celluloid Years: 12"s And MORE... (Hip-Hop)
 
   Disc 1:
-    1.1: Futura 2000 - Escapades Of Futura 2000 (feat. The Clash) [original 12" version]
+    1.1: Futura 2000 With The Clash - Escapades Of Futura 2000 [original 12" version]
     1.2: Time Zone - The Wildstyle Extended [original 12" version]
     1.3: Grandmixer D. ST - Cuts It Up [original 12" version]
     1.4: Deadline - Makossa Rock [original 12" version]

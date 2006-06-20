@@ -1,2 +1,5 @@
 coverage
 test/integration/sample_files
+db/development_structure.sql
+log/development.log
+log/test.log

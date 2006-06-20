@@ -60,7 +60,10 @@ class Album
             if track.encoder.nil?
               track.encoder = []
             end
-            track.encoder << encoder_list
+            encoder_list.each do |element|
+              next if element =~ /engiTunNORM/
+              track.encoder << element
+            end
           end
         end
       end

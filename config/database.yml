@@ -1,0 +1,16 @@
+defaults: &defaults
+  adapter: postgresql
+  username: ogd
+  password:
+
+development:
+  database: euterpe-dash-dev
+  <<: *defaults
+
+test:
+  database: euterpe-dash-test
+  <<: *defaults
+
+production:
+  database: euterpe-dash-prod
+  <<: *defaults

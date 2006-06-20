@@ -1,4 +1,5 @@
-$: << File.expand_path(File.join(File.dirname(__FILE__), '../lib'))
+$: << File.expand_path(File.join(File.dirname(__FILE__), '..'))
+$: << File.expand_path(File.join(File.dirname(__FILE__), '../../lib'))
 
 require 'test/unit'
 require 'path_utils'
@@ -19,8 +20,8 @@ class PathsTest < Test::Unit::TestCase
   end
   
   def test_recognize_preingested_album
-    assert PathUtils.album_ingested?(File.expand_path('../../mp3info/sample-metadata'),
-                                     File.join(File.expand_path('../../mp3info/sample-metadata'),
+    assert PathUtils.album_ingested?(File.expand_path('../mp3info/sample-metadata'),
+                                     File.join(File.expand_path('../mp3info/sample-metadata'),
                                                'Boredoms/Rebore Vol 3 mixed by DJ Krush')),
            "album should be recognized as ingested"
   end
