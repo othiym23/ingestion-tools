@@ -212,6 +212,18 @@ class AlbumDao
     updated_tracks
   end
   
+  def AlbumDao.find_generously(search_term)
+    found_albums = []
+    found_album_records = Euterpe::Dashboard::Album.find_generously(search_term)
+    
+    found_album_records.each do |album|
+      paths = album.discs.collect{|disc| disc.tracks.collect{|track| track.media_path.path}}.flatten
+      found_albums += AlbumDao.load_albums_from_paths(paths)
+    end
+    
+    found_albums
+  end
+  
   private
   
   def self.load_from_model(album)

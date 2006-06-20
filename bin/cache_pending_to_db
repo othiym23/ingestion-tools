@@ -4,7 +4,6 @@ script_path = File.readlink(script_path) if File.symlink?(script_path)
 
 $: << File.join(File.dirname(script_path), '../lib')
 
-require 'path_utils'
 require 'dao/album_dao'
 require 'adaptor/euterpe_dashboard_factory'
 
@@ -24,7 +23,7 @@ def find_pending_other_files(artist_directory)
   if found != []
     found
   else
-    nil
+    []
   end
 end
 
@@ -63,6 +62,7 @@ def cache_pending_media(archive_base)
     updated_tracks.sort{|tl,tr| tl.artist_name + tl.name <=> tr.artist_name + tr.name}.each do |track|
       puts "    #{track.artist_name} - #{track.name}"
     end
+  end
 
   updated_files = process_other_files(non_media_files)
   if 0 < updated_files.size

@@ -26,6 +26,7 @@ heuristic metadata correction:
 * improve encoder cattle-catcher to do something different with 
   release codes (i.e. not sticking them on the encoder string)
 * handle "pretty" canonicalization of featured artist list
+* eliminate iTunNORM comments
 
 audio file validation / QA:
 * build a façade over existing ingestion framework that's observable by

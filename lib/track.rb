@@ -42,7 +42,7 @@ class Track
       @remix = patterns[2]
     end
 
-    if patterns = @name.match(/^(.*) \((.*[Ll]ive)\)$/)
+    if patterns = @name.match(/^(.*) \((.*[Ll]ive)\)(.*)$/)
       @name = patterns[1] << patterns[3]
       @remix = patterns[2]
     end
