@@ -152,9 +152,9 @@ class Album
     formatted_album << "\n"
     unless simple
       album_attributes = []
-      album_attributes << ["Subtitle:", subtitle] if subtitle
-      album_attributes << ["Album version:", version_name] if version_name
-      album_attributes << ["Mixed by:", mixer] if mixer
+      album_attributes << ["Subtitle", subtitle] if subtitle && subtitle != ''
+      album_attributes << ["Album version", version_name] if version_name && version_name != ''
+      album_attributes << ["Mixed by", mixer] if mixer && mixer != ''
       formatted_album << justify_attribute_list(album_attributes)
     end
     formatted_album << "\n"
@@ -181,8 +181,8 @@ class Album
           track_attributes = []
           track_attributes << ["Remix", track.remix] if track.remix && track.remix != ''
           track_attributes << ["Genre", track.genre] if track.genre && track.genre != genre
-          track_attributes << ["Artist sort", track.artist_sort_order] if track.artist_sort_order
-          track_attributes << ["Sort", track.sort_order] if track.sort_order
+          track_attributes << ["Artist sort", track.artist_sort_order] if track.artist_sort_order && track.artist_sort_order != ''
+          track_attributes << ["Sort", track.sort_order] if track.sort_order && track.sort_order != ''
           track_attributes << ["Featured", track.featured_artists.join(', ')] if track.featured_artists.size > 0
           track_attributes << ["Image", track.image.mime_type] if track.image
           track_attributes << ["Comments", comments] if comments && comments != ''
@@ -198,15 +198,17 @@ class Album
       end
     end
 
-    if !simple && (musicbrainz_album_id || musicbrainz_album_artist_id ||
-                   musicbrainz_album_type || musicbrainz_album_status)
+    if !simple && ((musicbrainz_album_id && '' != musicbrainz_album_id) ||
+                    (musicbrainz_album_artist_id && '' != musicbrainz_album_artist_id) ||
+                    (musicbrainz_album_type && '' != musicbrainz_album_type) ||
+                    (musicbrainz_album_status && '' != musicbrainz_album_status))
       formatted_album << "\nMusicbrainz album info:\n"
       musicbrainz_attributes = []
       musicbrainz_attributes << ["artist UUID", musicbrainz_album_artist_id] if musicbrainz_album_artist_id && '' != musicbrainz_album_artist_id
-      musicbrainz_attributes << ["album UUID", musicbrainz_album_id] if musicbrainz_album_id
-      musicbrainz_attributes << ["release country", musicbrainz_album_release_country] if musicbrainz_album_release_country
-      musicbrainz_attributes << ["status", musicbrainz_album_status] if musicbrainz_album_status
-      musicbrainz_attributes << ["type", musicbrainz_album_type] if musicbrainz_album_type
+      musicbrainz_attributes << ["album UUID", musicbrainz_album_id] if musicbrainz_album_id && '' != musicbrainz_album_id
+      musicbrainz_attributes << ["release country", musicbrainz_album_release_country] if musicbrainz_album_release_country && '' != musicbrainz_album_release_country
+      musicbrainz_attributes << ["status", musicbrainz_album_status] if musicbrainz_album_status && '' != musicbrainz_album_status
+      musicbrainz_attributes << ["type", musicbrainz_album_type] if musicbrainz_album_type && '' != musicbrainz_album_type
 
       formatted_album << justify_attribute_list(musicbrainz_attributes)
     end

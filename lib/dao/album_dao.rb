@@ -27,11 +27,40 @@ class AlbumDao
       end
 
       album = albums[album_bucket]
-      album.musicbrainz_album_artist_id = track_dao.musicbrainz_album_artist_id if track_dao.musicbrainz_album_artist_id
-      album.musicbrainz_album_id = track_dao.musicbrainz_album_id if track_dao.musicbrainz_album_id
-      album.musicbrainz_album_type = track_dao.musicbrainz_album_type if track_dao.musicbrainz_album_type
-      album.musicbrainz_album_status = track_dao.musicbrainz_album_status if track_dao.musicbrainz_album_status
-      album.musicbrainz_album_release_country = track_dao.musicbrainz_album_release_country if track_dao.musicbrainz_album_release_country
+      # HEURISTIC: assign album-level MusicBrainz data to album level from
+      # tracks; conflict-resolution scheme is to not resolve any conflicts
+      # and let the MusicBrainz matcher figure out what we've got
+      if track_dao.musicbrainz_album_artist_id &&
+         '' != track_dao.musicbrainz_album_artist_id &&
+         album.musicbrainz_album_artist_id.nil?
+
+        album.musicbrainz_album_artist_id = track_dao.musicbrainz_album_artist_id
+      end
+      
+      if track_dao.musicbrainz_album_id &&
+         '' != track_dao.musicbrainz_album_id &&
+         album.musicbrainz_album_id.nil?
+        album.musicbrainz_album_id = track_dao.musicbrainz_album_id
+      end
+      
+      if track_dao.musicbrainz_album_type &&
+         '' != track_dao.musicbrainz_album_type &&
+         album.musicbrainz_album_type.nil?
+        album.musicbrainz_album_type = track_dao.musicbrainz_album_type
+      end
+      
+      if track_dao.musicbrainz_album_status &&
+         '' != track_dao.musicbrainz_album_status &&
+         album.musicbrainz_album_status.nil?
+        album.musicbrainz_album_status = track_dao.musicbrainz_album_status
+      end
+      
+      if track_dao.musicbrainz_album_release_country &&
+         '' != track_dao.musicbrainz_album_release_country &&
+         album.musicbrainz_album_release_country.nil?
+        album.musicbrainz_album_release_country = track_dao.musicbrainz_album_release_country
+      end
+      
       album.compilation = true if track_dao.compilation?
       album.sort_order = track_dao.album_sort_order if track_dao.album_sort_order
       
@@ -115,10 +144,10 @@ class AlbumDao
         album.release_date = years.compact.uniq.sort.last
       end
       
-      # HEURISTIC: promote track-level MusicBrainz data to album level
+      # HEURISTIC: promote track-level MusicBrainz artist to album level
       if 1 == musicbrainz_artist_ids.compact.uniq.size &&
-        (album.musicbrainz_album_artist_id.nil? ||
-         '' == album.musicbrainz_album_artist_id)
+        (!album.musicbrainz_album_artist_id.nil?
+         '' != album.musicbrainz_album_artist_id)
         album.musicbrainz_album_artist_id = musicbrainz_artist_ids.compact.uniq.first
       end
       
@@ -141,6 +170,11 @@ class AlbumDao
     end
     
     albums.values
+  end
+  
+  def AlbumDao.reload_album_from_files(album)
+    album_paths = album.discs.compact.collect{|disc| disc.tracks.collect{|track| track.path}}
+    AlbumDao.load_albums_from_paths(album_paths.flatten).first
   end
   
   def AlbumDao.save(album)

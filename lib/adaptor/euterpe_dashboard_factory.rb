@@ -75,6 +75,10 @@ class TrackDao
     end
   end
   
+  def TrackDao.load_track_from_record(track_record, disc = nil)
+    load_from_record(track_record, disc)
+  end
+  
   def TrackDao.file_changed?(path)
     path = Euterpe::Dashboard::MediaPath.find_by_path(path)
     if path
@@ -107,6 +111,30 @@ class TrackDao
     end
     
     track_record
+  end
+  
+  def self.load_from_record(track_record, disc)
+    track = Track.new(track_record.media_path.path)
+    track.disc = disc
+    track.name = track_record.name if track_record.name && '' != track_record.name
+    track.artist_name = track_record.artist_name if track_record.artist_name && '' != track_record.artist_name
+    track.sequence = track_record.sequence if track_record.sequence && '' != track_record.sequence
+    track.genre = track_record.genre.name if track_record.genre && '' != track_record.genre.name
+    track.comment = track_record.comment if track_record.comment && '' != track_record.comment
+    track.encoder = track_record.encoder.split(' / ') if track_record.encoder && '' != track_record.encoder
+    track.remix = track_record.remix if track_record.remix && '' != track_record.remix
+    track.release_date = track_record.release_date if track_record.release_date && '' != track_record.release_date
+    track.unique_id = track_record.unique_id  if track_record.unique_id && '' != track_record.unique_id
+    track.musicbrainz_artist_id = track_record.musicbrainz_artist_id if track_record.musicbrainz_artist_id && '' != track_record.musicbrainz_artist_id
+    track.sort_order = track_record.sort_order if track_record.sort_order && '' != track_record.sort_order
+    track.artist_sort_order = track_record.artist_sort_order if track_record.artist_sort_order && '' != track_record.artist_sort_order
+    # TODO: track_record.image = track.image
+    
+    track_record.artists.each do |artist_record|
+      track.featured_artists << artist_record.name
+    end
+    
+    track
   end
   
   def self.load_from_model(track_record, disc_record, track)
@@ -156,6 +184,15 @@ class DiscDao
 
     updated_tracks
   end
+  
+  def DiscDao.load_disc_from_record(disc_record, album = nil)
+    disc = load_from_record(disc_record, album)
+    disc_record.tracks.each do |track_record|
+      disc.tracks << TrackDao.load_track_from_record(track_record, disc)
+    end
+    
+    disc
+  end
 
   def DiscDao.find_changed_paths(paths)
     changed_paths = []
@@ -180,6 +217,16 @@ class DiscDao
   
   private
   
+  def self.load_from_record(disc_record, album = nil)
+    disc = Disc.new
+    disc.album = album
+
+    disc.number = disc_record.number if disc_record.number && '' != disc_record.number
+    disc.number_of_tracks = disc_record.number_of_tracks if disc_record.number_of_tracks && '' != disc_record.number_of_tracks
+    
+    disc
+  end
+  
   def self.load_from_model(disc, album_record = nil)
     disc_record = Euterpe::Dashboard::Disc.new
     disc_record.album = album_record
@@ -192,6 +239,27 @@ class DiscDao
 end
 
 class AlbumDao
+  def AlbumDao.find_generously(search_term)
+    found_albums = []
+    found_album_records = Euterpe::Dashboard::Album.find_generously(search_term)
+    
+    found_album_records.each do |album_record|
+      found_albums << load_album_from_record(album_record)
+    end
+    
+    found_albums
+  end
+  
+  def AlbumDao.choose_randomly
+    random_album_record = Euterpe::Dashboard::Album.find_random
+    load_album_from_record(random_album_record)
+  end
+  
+  def AlbumDao.choose_most_recent
+    recent_album_record = Euterpe::Dashboard::Album.find_most_recently_modified
+    load_album_from_record(recent_album_record)
+  end
+  
   def AlbumDao.save_to_db(album)
     album_record = load_from_model(album)
     album.discs.compact.each do |disc|
@@ -212,19 +280,57 @@ class AlbumDao
     updated_tracks
   end
   
-  def AlbumDao.find_generously(search_term)
-    found_albums = []
-    found_album_records = Euterpe::Dashboard::Album.find_generously(search_term)
+  def AlbumDao.load_album_from_record(album_record)
+    album = load_from_record(album_record)
     
-    found_album_records.each do |album|
-      paths = album.discs.collect{|disc| disc.tracks.collect{|track| track.media_path.path}}.flatten
-      found_albums += AlbumDao.load_albums_from_paths(paths)
+    album_record.discs.each do |disc_record|
+      album.discs[disc_record.number] = DiscDao.load_disc_from_record(disc_record, album)
     end
     
-    found_albums
+    album
   end
   
   private
+  
+  def self.load_from_record(album_record)
+    album = Album.new
+    
+    if album_record.name && '' != album_record.name
+      album.name = album_record.name
+    end
+
+    if album_record.subtitle && '' != album_record.subtitle
+      album.subtitle = album_record.subtitle
+    end
+
+    if album_record.version_name && '' != album_record.version_name
+      album.version_name = album_record.version_name
+    end
+
+    if album_record.artist_name && '' != album_record.artist_name
+      album.artist_name = album_record.artist_name
+    end
+    
+    if album_record.number_of_discs && '' != album_record.number_of_discs
+      album.number_of_discs = album_record.number_of_discs
+    end
+    
+    if album_record.genre && '' != album_record.genre.name 
+      album.genre = album_record.genre.name
+    end
+    
+    album.release_date = album_record.release_date if album_record.release_date && '' != album_record.release_date
+    album.compilation = album_record.compilation if album_record.compilation && '' != album_record.compilation
+    album.mixer = album_record.mixer if album_record.mixer && '' != album_record.mixer
+    album.musicbrainz_album_id = album_record.musicbrainz_album_id if album_record.musicbrainz_album_id && '' != album_record.musicbrainz_album_id
+    album.musicbrainz_album_artist_id = album_record.musicbrainz_album_artist_id if album_record.musicbrainz_album_artist_id && '' != album_record.musicbrainz_album_artist_id
+    album.musicbrainz_album_type = album_record.musicbrainz_album_type if album_record.musicbrainz_album_type && '' != album_record.name
+    album.musicbrainz_album_status = album_record.musicbrainz_album_status if album_record.musicbrainz_album_status && '' != album_record.musicbrainz_album_status
+    album.musicbrainz_album_release_country = album_record.musicbrainz_album_release_country if album_record.musicbrainz_album_release_country && '' != album_record.musicbrainz_album_release_country
+    album.sort_order = album_record.sort_order if album_record.sort_order && '' != album_record.sort_order
+    
+    album
+  end
   
   def self.load_from_model(album)
     album_record = Euterpe::Dashboard::Album.new
