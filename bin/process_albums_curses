@@ -1,0 +1,545 @@
+#!/usr/bin/env ruby
+script_path = __FILE__
+script_path = File.readlink(script_path) if File.symlink?(script_path)
+
+$: << File.join(File.dirname(script_path), '../lib')
+
+require 'curses'
+require 'adaptor/euterpe_dashboard_factory'
+require 'yaml'
+
+# require 'logger'
+# ActiveRecord::Base.logger = Logger.new('ingestion.log')
+
+include Curses
+
+ARCHIVE_BASE = '/data/music/mp3'
+PENDING_BASE = '/data/music/holding/pending'
+
+STDOUT.sync = true
+source_directory = File.expand_path(PENDING_BASE)
+raise IOError.new("Path #{source_directory} does not exist!") unless File.exists?(source_directory)
+
+at_exit { puts "\nSeeya!" }
+
+def narrow_albums(albums, search_term)
+  if [] == albums
+    if search_term && '' != search_term.strip
+      AlbumDao.find_generously(search_term)
+    end
+  else
+    albums.select do |album|
+      album_name = "#{album.artist_name}: #{album.name}"
+    
+      album.artist_name.match(/#{search_term}/i) ||
+      album.name.match(/#{search_term}/i) ||
+      album.discs.compact.detect do |disc|
+        disc.tracks.detect do |track|
+          track.artist_name.match(/#{search_term}/i) ||
+          track.name.match(/#{search_term}/i)
+        end
+      end
+    end
+  end
+end
+
+class ProcessorScreen
+  def mode_label(label)
+    setpos(Curses::lines - 3, 0)
+    clrtoeol
+    addstr(label)
+  end
+  
+  def mode_select(prompt)
+    setpos(Curses::lines - 2, 0)
+    clrtoeol
+    addstr(prompt)
+    getch
+  end
+  
+  def prompt_string(prompt, start_string = '')
+    input = start_string.to_s || ''
+
+    setpos(Curses::lines - 2, 0)
+    clrtoeol
+    addstr(prompt)
+    addstr(input)
+    echo
+    input << getstr
+    noecho
+    setpos(Curses::lines - 2, 0)
+    clrtoeol
+    
+    input
+  end
+  
+  def clear_status
+    setpos(Curses::lines - 1, 0)
+    clrtoeol
+  end
+  
+  def display_status(status)
+    setpos(Curses::lines - 1, 0)
+    clrtoeol
+    addstr(status)
+    refresh
+  end
+end
+
+class InfoDisplayPane
+  attr_accessor :model
+  attr_reader :height, :width
+
+  include Curses
+
+  def initialize(text)
+    @model = []
+    text.each_line { |line| @model.push(line.chop) }
+    
+    @height = Curses::lines - 6
+    @width = Curses::cols - 8
+
+    @top = 0
+
+    @window = Window.new(@height, @width, 2, 4)
+    @window.scrollok(true)
+    
+    repaint
+  end
+  
+  def hide
+    @window.clear
+    @window.refresh
+  end
+  
+  def show
+    repaint
+  end
+  
+  def destroy
+    @window.clear
+    @window.refresh
+    @window.close
+  end
+  
+  def repaint
+    @window.clear
+
+    @model[@top, @height].each_with_index do |line, index|
+      @window.setpos(index, 0)
+      @window.addstr(line)
+    end
+
+    @window.refresh
+  end
+  
+  def scroll_up
+    if @top > 0
+      @window.scrl(-1)
+      @top -= 1
+
+      line = @model[@top]
+
+      if line
+        @window.setpos(0, 0)
+        @window.addstr(line)
+      end
+
+      @window.refresh
+      
+      return true
+    else
+      return false
+    end
+  end
+
+  def scroll_down
+    if @top + @window.maxy < @model.length
+      @window.scrl(1)
+      @top += 1
+
+      line = @model[@top + @window.maxy - 1]
+
+      if line
+        @window.setpos(@window.maxy - 1, 0)
+        @window.addstr(line)
+      end
+      
+      @window.refresh
+      
+      return true
+    else
+      return false
+    end
+  end
+end
+
+class AlbumPane
+  attr_accessor :model, :cursor_line
+  attr_reader :top
+  attr_reader :height, :width
+
+  include Curses
+
+  def initialize(model)
+    @model = model
+    
+    @height = Curses::lines - 6
+    @width = Curses::cols - 8
+
+    @top = 0
+    @cursor_line = @top
+
+    @window = Window.new(@height, @width, 2, 4)
+    @window.scrollok(false)
+    
+    repaint
+  end
+  
+  def hide
+    @window.clear
+    @window.refresh
+  end
+  
+  def show
+    repaint
+  end
+  
+  def destroy
+    @window.clear
+    @window.refresh
+    @window.close
+  end
+  
+  def cursor_line=(value)
+    @cursor_line = [[value, @model.size - 1].min, 0].max
+    repaint
+  end
+  
+  def model=(new_model)
+    @top = 0
+    @cursor_line = 0
+    @model = new_model
+    repaint
+  end
+  
+  def current_album
+    @model[@cursor_line]
+  end
+  
+  def repaint
+    @window.clear
+
+    if @top + @height < @cursor_line || @top > @cursor_line
+      @top = [@cursor_line - @height / 3, 0].max
+    end
+    
+    @model[@top, @height].each_with_index do |album,idx|
+      @window.setpos(idx, 0)
+      @window.addstr(album_to_entry(@top + idx + 1, album))
+    end
+
+    highlight_line(@cursor_line)
+    @window.refresh
+  end
+  
+  def scroll_up
+    hop_increment = @height / 2
+    cur_y = @cursor_line - @top
+
+    if (@cursor_line > 0)
+      if (0 == @top && cur_y > 0) || (cur_y > 2)
+        unhighlight_line(@cursor_line)
+        @cursor_line -= 1
+        highlight_line(@cursor_line)
+        @window.refresh
+      else
+        @top = [0, @top - hop_increment].max
+        @cursor_line -= 1
+        repaint
+      end
+    end
+  end
+
+  def scroll_down
+    hop_increment = @height / 2
+    cur_y = @cursor_line - @top
+
+    if (@cursor_line < @model.size - 1)
+      if (@top + @height > @model.size) || (cur_y < @height - 3)
+        unhighlight_line(@cursor_line)
+        @cursor_line += 1
+        highlight_line(@cursor_line)
+        @window.refresh
+      elsif
+        @top += hop_increment
+        @cursor_line += 1
+        repaint
+      end
+    end
+  end
+  
+  def highlight_line(index)
+    line_text = album_to_entry(index + 1, @model[index])
+    line_y = index - @top
+
+    if (0...@height) === line_y 
+      @window.setpos(line_y, 0)
+      @window.attron(A_REVERSE)
+      @window.attron(A_BOLD)
+      @window.addstr(line_text + ' ' * (@width - line_text.size))
+      @window.attroff(A_BOLD)
+      @window.attroff(A_REVERSE)
+    end
+  end
+
+  def unhighlight_line(index)
+    line_text = album_to_entry(index + 1, @model[index])
+    line_y = index - @top
+
+    if (0...@height) === line_y 
+      @window.setpos(line_y, 0)
+      @window.addstr(line_text)
+      @window.clrtoeol
+    end
+  end
+
+  private
+  
+  def album_to_entry(index, album)
+    "#{"%03d" % index}. #{album.artist_name} - #{album.name}"
+  end
+end
+
+class PendingStatus
+  attr_accessor :loaded, :total
+  
+  def initialize(loaded, total)
+    @loaded = loaded
+    @total = total
+  end
+  
+  def loaded=(value)
+    @loaded = value
+    refresh
+  end
+  
+  def refresh
+    setpos(0, 0)
+    clrtoeol
+    setpos(0, 2)
+    attron(A_BOLD)
+    addstr("#{@total.to_s} albums pending")
+    addstr(", #{@loaded.to_s} loaded for processing") if @loaded && @loaded > 0
+    attroff(A_BOLD)
+  end
+end
+
+  
+def display_info(info)
+  info_pane = InfoDisplayPane.new(info)
+  loop do
+    case @processor_screen.mode_select("viewing info (up /down, k / j, u / d or [b]ack): ")
+    when ?k, ?u, KEY_UP
+      info_pane.scroll_up
+      refresh
+    when ?j, ?d, KEY_DOWN
+      info_pane.scroll_down
+      refresh
+    when ?b, ?Q, ?q
+      info_pane.hide
+      break
+    end
+  end
+
+  info_pane.destroy
+  refresh
+end
+
+def process_album(album)
+  @pending_status.loaded = 1
+
+  @processor_screen.mode_label("Process album")
+  @processor_screen.display_status("Refreshing metadata for #{album.artist_name} - #{album.name} from source files")
+  
+  reloaded_album = AlbumDao.reload_album_from_files(album)
+  track_pane = InfoDisplayPane.new(reloaded_album.display_formatted)
+
+  @processor_screen.display_status("Processing #{reloaded_album.artist_name} - #{reloaded_album.name}")
+
+  loop do
+    case @processor_screen.mode_select("[e]dit metadata [Y]AML dump [b]ack: ")
+    when ?e, KEY_CTRL_J
+      @processor_screen.display_status("TODO: album editing for '#{reloaded_album.name}'")
+    when ?S
+      @processor_screen.display_status("TODO: album archiving for '#{reloaded_album.name}'")
+    when ?Y
+      @processor_screen.display_status("Displaying YAML for '#{reloaded_album.name}'")
+      track_pane.hide
+      display_info(YAML.dump(reloaded_album))
+      track_pane.show
+    when ?u, ?k, KEY_UP
+      track_pane.scroll_up
+    when ?d, ?j, KEY_DOWN
+      track_pane.scroll_down
+    when ?b, ?q, ?Q
+      @processor_screen.display_status("Done with '#{reloaded_album.name}'!")
+      break
+    else
+      @processor_screen.clear_status
+    end
+    
+    refresh
+  end
+  
+  track_pane.destroy
+  @pending_status.loaded = 0
+end
+
+def choose_random_album
+  process_album(AlbumDao.choose_randomly)
+end
+
+def choose_most_recent_album
+  process_album(AlbumDao.choose_most_recent)
+end
+
+def process_found_albums(found_albums)
+  original_albums = found_albums
+  album_window = AlbumPane.new(found_albums)
+
+  loop do
+    @pending_status.loaded = found_albums.size
+
+    @processor_screen.mode_label('Choose album')
+    if original_albums != found_albums
+      browser_prompt = "[n]arrow results ([c]lear narrowing) [p]rocess highlighted album [b]ack: "
+    else
+      browser_prompt = "[n]arrow results [p]rocess highlighted album [b]ack: "
+    end
+    
+    mode = @processor_screen.mode_select(browser_prompt)
+    case mode
+    when ?n
+      @processor_screen.mode_label("Narrow search")
+      @processor_screen.clear_status
+      search_term = @processor_screen.prompt_string('additional term: ')
+
+      @processor_screen.display_status("refining search...")
+      found_albums = narrow_albums(found_albums, search_term)
+      if 1 == found_albums.size
+        album_window.hide
+        process_album(found_albums.first)
+        album_window.show
+        
+        found_albums = original_albums
+      elsif 1 < found_albums.size
+        album_window.model = found_albums
+        addstr("#{found_albums.size} found")
+      else
+        @processor_screen.display_status("no results!")
+      end
+    when ?c
+      found_albums = original_albums
+      album_window.model = found_albums
+      @processor_screen.display_status("narrowing cleared")
+    when ?p, ?e, KEY_CTRL_J
+      @processor_screen.mode_label("Process album")
+      @processor_screen.clear_status
+
+      album_window.hide
+      process_album(album_window.current_album)
+      album_window.show
+    when ?k, ?u, KEY_UP
+      @processor_screen.clear_status
+      album_window.scroll_up
+    when ?j, ?d, KEY_DOWN
+      @processor_screen.clear_status
+      album_window.scroll_down
+    when ?b, ?Q, ?q
+      album_window.destroy
+      refresh
+      break
+    when (?0..?9)
+      @processor_screen.mode_label("Jump to line")
+      @processor_screen.clear_status
+      number_string = @processor_screen.prompt_string('line to jump to: ', mode.chr)
+      number = number_string.to_i
+
+      album_window.cursor_line = number - 1
+    end
+  end
+end
+
+def find_albums_to_process
+  @processor_screen.mode_label("Find albums")
+  search_term = @processor_screen.prompt_string("cached metadata search: ")
+
+  @processor_screen.display_status("searching Euterpe metadata cache for albums mentioning '#{search_term}'...")
+  start_time = Time.now
+  found_albums = narrow_albums([], search_term)
+  finish_time = Time.now
+  time = finish_time - start_time
+  addstr("#{found_albums.size} found in #{time.to_f} seconds")
+
+  return unless found_albums.size >= 0
+
+  if 1 == found_albums.size
+    process_album(found_albums.first)
+  elsif 1 < found_albums.size
+    process_found_albums(found_albums)
+  else
+    @processor_screen.display_status("no results!")
+  end
+end
+
+def top_level
+  @pending_status = PendingStatus.new(0, Euterpe::Dashboard::Album.count)
+
+  loop do
+    @pending_status.loaded = 0
+    
+    @processor_screen.mode_label('Top level')
+    case @processor_screen.mode_select("[f]ind albums [r]andom album [m]ost recent album [q]uit: ")
+    when ?f
+      find_albums_to_process
+    when ?m
+      choose_most_recent_album
+    when ?r
+      choose_random_album
+    when ?b, ?Q, ?q
+      return
+    end
+  end
+end
+
+init_screen
+begin
+  cbreak
+  noecho
+  stdscr.keypad(true)
+
+  setpos(2, 4)
+  addstr("::AOAIOXXYSZ:: music archive management system, v1")
+  setpos(3, 6)
+  addstr("e-mail Forrest (ogd@aoaioxxysz.net) if anything weird happens.")
+
+  @processor_screen = ProcessorScreen.new
+
+  @processor_screen.display_status("Connecting to database...")
+  ActiveRecord::Base.establish_connection(
+    :adapter  => "postgresql",
+    :username => "ogd",
+    :database => "euterpe-dash-dev",
+    :encoding => "SQL_ASCII"
+  )
+  refresh
+  addstr("connected")
+
+  top_level
+ensure
+  clear
+  refresh
+  close_screen
+end
+

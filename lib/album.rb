@@ -6,7 +6,7 @@ class Album
   attr_accessor :genre, :release_date, :compilation, :mixer
   attr_accessor :musicbrainz_album_id, :musicbrainz_album_artist_id
   attr_accessor :musicbrainz_album_type, :musicbrainz_album_status, :musicbrainz_album_release_country
-  attr_accessor :sort_order
+  attr_accessor :sort_order, :artist_sort_order
   
   def initialize
     @discs = []
@@ -96,6 +96,12 @@ class Album
         @sort_order = ('' << match_data[2] << ', ' << match_data[1])
       end
     end
+    
+    unless @artist_sort_order && '' != @artist_sort_order
+      if match_data = @artist_name.match(/\A(The|A|An) (.+)\Z/)
+        @artist_sort_order = (match_data[2] << ', ' << match_data[1])
+      end
+    end
   end
   
   # HEURISTIC: at some point I may switch to using a more sophisticated
@@ -152,6 +158,7 @@ class Album
     formatted_album << "\n"
     unless simple
       album_attributes = []
+      album_attributes << ["Artist sort", artist_sort_order] if artist_sort_order && artist_sort_order != ''
       album_attributes << ["Subtitle", subtitle] if subtitle && subtitle != ''
       album_attributes << ["Album version", version_name] if version_name && version_name != ''
       album_attributes << ["Mixed by", mixer] if mixer && mixer != ''
@@ -181,7 +188,7 @@ class Album
           track_attributes = []
           track_attributes << ["Remix", track.remix] if track.remix && track.remix != ''
           track_attributes << ["Genre", track.genre] if track.genre && track.genre != genre
-          track_attributes << ["Artist sort", track.artist_sort_order] if track.artist_sort_order && track.artist_sort_order != ''
+          track_attributes << ["Artist sort", track.artist_sort_order] if track.artist_sort_order && track.artist_sort_order != '' && track.artist_sort_order != artist_sort_order
           track_attributes << ["Sort", track.sort_order] if track.sort_order && track.sort_order != ''
           track_attributes << ["Featured", track.featured_artists.join(', ')] if track.featured_artists.size > 0
           track_attributes << ["Image", track.image.mime_type] if track.image

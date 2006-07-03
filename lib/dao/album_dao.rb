@@ -85,14 +85,6 @@ class AlbumDao
       musicbrainz_artist_ids = []
       images = []
       
-      album.find_hidden_soundtrack!
-      album.set_subtitle!
-      album.set_mixer!
-      album.set_version_name!
-      album.capitalize_names!
-      album.set_sort_order!
-      album.set_encoder_from_comments!
-      
       album.discs.compact.each do |disc|
         disc.tracks.each do |track|
           artists << track.artist_name
@@ -167,6 +159,14 @@ class AlbumDao
           track.image = album_image unless track.image
         end
       end
+      
+      album.find_hidden_soundtrack!
+      album.set_subtitle!
+      album.set_mixer!
+      album.set_version_name!
+      album.capitalize_names!
+      album.set_sort_order!
+      album.set_encoder_from_comments!
     end
     
     albums.values

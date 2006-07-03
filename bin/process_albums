@@ -4,14 +4,17 @@ script_path = File.readlink(script_path) if File.symlink?(script_path)
 
 $: << File.join(File.dirname(script_path), '../lib')
 
-require 'curses'
-require 'adaptor/euterpe_dashboard_factory'
+require 'jttui/jttui'
+require 'jttui/jttuistd'
 require 'yaml'
+require 'logger'
 
-# require 'logger'
-# ActiveRecord::Base.logger = Logger.new('ingestion.log')
+require 'adaptor/euterpe_dashboard_factory' 
+require 'ui/album_selection_model'
+require 'ui/fln_widgets'
 
-include Curses
+MY_LOGGER = Logger.new('jttui_trace.log')
+#ActiveRecord::Base.logger = Logger.new('ingestion.log')
 
 ARCHIVE_BASE = '/data/music/mp3'
 PENDING_BASE = '/data/music/holding/pending'
@@ -22,524 +25,515 @@ raise IOError.new("Path #{source_directory} does not exist!") unless File.exists
 
 at_exit { puts "\nSeeya!" }
 
-def narrow_albums(albums, search_term)
-  if [] == albums
-    if search_term && '' != search_term.strip
-      AlbumDao.find_generously(search_term)
-    end
-  else
-    albums.select do |album|
-      album_name = "#{album.artist_name}: #{album.name}"
-    
-      album.artist_name.match(/#{search_term}/i) ||
-      album.name.match(/#{search_term}/i) ||
-      album.discs.compact.detect do |disc|
-        disc.tracks.detect do |track|
-          track.artist_name.match(/#{search_term}/i) ||
-          track.name.match(/#{search_term}/i)
-        end
-      end
+# Hack into the guts of JTTui so I can see what it's doing, as well as
+# patching a bug or two.
+
+module JTTui
+  alias_method :_send_message, :sendmessage
+  def sendmessage(msg)
+    log_message = "[#{msg[0].name}] received message #{msg[1]}"
+    log_message << " '#{msg[2]}'" if msg[2]
+    MY_LOGGER.info(log_message)
+    _send_message(msg)
+  end
+end
+
+class JTTWindow
+  alias_method :_paint_self, :paintself
+  def paintself(pc)
+    MY_LOGGER.info("paintself: [#{@name}]")
+    _paint_self(pc)
+  end
+
+  def visible=(v)
+    if @visible ^ v
+      @visible=v
+      MY_LOGGER.info("FIXING JTTWindow.visible= by not exploding #{@name}'s message queue when pane " << (v ? "shown" : "hidden"))
+      addmessage @parent, :paint
     end
   end
 end
 
-class ProcessorScreen
-  def mode_label(label)
-    setpos(Curses::lines - 3, 0)
-    clrtoeol
-    addstr(label)
-  end
-  
-  def mode_select(prompt)
-    setpos(Curses::lines - 2, 0)
-    clrtoeol
-    addstr(prompt)
-    getch
-  end
-  
-  def prompt_string(prompt, start_string = '')
-    input = start_string.to_s || ''
-
-    setpos(Curses::lines - 2, 0)
-    clrtoeol
-    addstr(prompt)
-    addstr(input)
-    echo
-    input << getstr
-    noecho
-    setpos(Curses::lines - 2, 0)
-    clrtoeol
-    
-    input
-  end
-  
-  def clear_status
-    setpos(Curses::lines - 1, 0)
-    clrtoeol
-  end
-  
-  def display_status(status)
-    setpos(Curses::lines - 1, 0)
-    clrtoeol
-    addstr(status)
-    refresh
-  end
-end
-
-class InfoDisplayPane
-  attr_accessor :model
-  attr_reader :height, :width
-
-  include Curses
-
-  def initialize(text)
-    @model = []
-    text.each_line { |line| @model.push(line.chop) }
-    
-    @height = Curses::lines - 6
-    @width = Curses::cols - 8
-
-    @top = 0
-
-    @window = Window.new(@height, @width, 2, 4)
-    @window.scrollok(true)
-    
-    repaint
-  end
-  
-  def hide
-    @window.clear
-    @window.refresh
-  end
-  
-  def show
-    repaint
-  end
-  
-  def destroy
-    @window.clear
-    @window.refresh
-    @window.close
-  end
-  
-  def repaint
-    @window.clear
-
-    @model[@top, @height].each_with_index do |line, index|
-      @window.setpos(index, 0)
-      @window.addstr(line)
-    end
-
-    @window.refresh
-  end
-  
-  def scroll_up
-    if @top > 0
-      @window.scrl(-1)
-      @top -= 1
-
-      line = @model[@top]
-
-      if line
-        @window.setpos(0, 0)
-        @window.addstr(line)
-      end
-
-      @window.refresh
-      
-      return true
-    else
-      return false
-    end
-  end
-
-  def scroll_down
-    if @top + @window.maxy < @model.length
-      @window.scrl(1)
-      @top += 1
-
-      line = @model[@top + @window.maxy - 1]
-
-      if line
-        @window.setpos(@window.maxy - 1, 0)
-        @window.addstr(line)
-      end
-      
-      @window.refresh
-      
-      return true
-    else
-      return false
+module Euterpe
+  module Ingestion
+    def self.connect_to_euterpe
+      ActiveRecord::Base.establish_connection(
+        :adapter  => "postgresql",
+        :username => "ogd",
+        :database => "euterpe-dash-dev",
+        :encoding => "SQL_ASCII"
+      )
     end
   end
 end
 
-class AlbumPane
-  attr_accessor :model, :cursor_line
-  attr_reader :top
-  attr_reader :height, :width
-
-  include Curses
-
-  def initialize(model)
-    @model = model
-    
-    @height = Curses::lines - 6
-    @width = Curses::cols - 8
-
-    @top = 0
-    @cursor_line = @top
-
-    @window = Window.new(@height, @width, 2, 4)
-    @window.scrollok(false)
-    
-    repaint
+class PendingStatus < FLNBorderlessPane
+  def initialize(selection_model, parent, top, width)
+    MY_LOGGER.info("PendingStatus.initialize starting")
+    self.model = selection_model
+    super(parent, self.class.name, width - 26, top, 26, 1, '')
+    self.color = JTTui.aaxz_basic
   end
-  
-  def hide
-    @window.clear
-    @window.refresh
-  end
-  
-  def show
-    repaint
-  end
-  
-  def destroy
-    @window.clear
-    @window.refresh
-    @window.close
-  end
-  
-  def cursor_line=(value)
-    @cursor_line = [[value, @model.size - 1].min, 0].max
-    repaint
+
+  def paintself(pc)
+    message = current_message
+    pc.move(self.w - message.length, 0)
+    pc.addstra(message, JTTui.aaxz_important)
   end
   
   def model=(new_model)
-    @top = 0
-    @cursor_line = 0
     @model = new_model
-    repaint
+    @model.add_observer(self)
+  end
+  
+  def update(*args)
+    addmessage self, :paint
+  end
+
+  def current_message
+    message = @model.total.to_s << ' albums'
+    if @model.selected
+      message << ', 1 loaded'
+    elsif @model.narrowed_list && @model.narrowed_list.size > 0
+      message << ', ' << @model.narrowed_list.size.to_s << ' loaded'
+    end
+    
+    message
+  end
+end
+
+class AlbumList < JTTWList
+  def initialize(*args, &block)
+    @totalwidth = 1
+    super
+    @color = JTTui.aaxz_basic
+    @color_basic = JTTui.aaxz_basic
+    @color_active = JTTui.aaxz_reversed
+  end
+
+  def current_album
+    @album_list[@focusedentry] if @album_list
+  end
+  
+  def album_list=(list)
+    @album_list = list
+    update
+  end
+  
+  def album_string(idx)
+    "#{"%03d" % (idx + 1)}. #{@album_list[idx].artist_name} - #{@album_list[idx].name}" if @album_list
+  end
+  
+  def update
+    @totalwidth = 1
+    @album_list.each_index{ |idx|
+      cw = self.list_getitemsize(idx)[0]
+      @totalwidth = cw if  cw > @totalwidth
+    }
+    updatescrollers
+  end
+
+  def list_getitemsize(idx)
+    [self.w - 1, 1]
+  end
+  
+  def list_drawitem(pc, hilighted, focused, idx)
+    super
+    pc.addstr album_string(idx)
+  end
+
+  def list_gettotalwidth
+    @totalwidth
+  end
+
+  def list_getlength
+    (@album_list.size if @album_list) || 0
+  end
+
+  def keypress(key)
+    return false if list_keyonitem(key,@focusedentry)
+    callupdate=true
+    case key
+    when 'up', 'C-p', 'u', 'k'   then step_minus
+    when 'down', 'C-n', 'd', 'j' then step_plus
+    when 'home', 'M-<'           then go_start
+    when 'end', 'M->'            then go_end
+    when 'pgup', 'M-v'           then view_minus
+    when 'pgdn', 'C-v'           then view_plus
+
+    when 'left', 'C-b'  then @scrollx.step_minus if @scrollx
+    when 'right', 'C-f' then @scrollx.step_plus  if @scrollx
+    when 'M-b'          then @scrollx.view_minus if @scrollx
+    when 'M-f'          then @scrollx.view_plus  if @scrollx
+    when 'C-a'          then @scrollx.go_start   if @scrollx
+    when 'C-e'          then @scrollx.go_end     if @scrollx
+    else
+      callupdate=false
+      addmessage @parent, :keypress, key
+    end
+    scrollaction if callupdate
+  end
+
+  def action
+    @block.call(@album_list[@focusedentry]) if @block
+  end
+end
+
+class Mode
+  def initialize(selection_model, parent, control_pane, status_pane)
+    @container = parent
+    @model = selection_model
+    @status = status_pane
+    @control = control_pane
+  end
+  
+  def enter
+    # raise 'abstract operation raised directly!'
+  end
+  
+  def exit
+    # raise 'abstract operation raised directly!'
+  end
+  
+  def update
+    # raise 'abstract operation raised directly!'
+  end
+  
+  protected
+  
+  def pass_the_buck(key)
+    @status.message = ''
+    @container.addmessage @container.parent, :keypress, key 
+  end
+end
+
+class EditMode < Mode
+  def enter
+    @album_info_pane = FLNSlidingTextReader.new(@container, 'AlbumInfoPane',
+                                                2, 1, @container.w - 4, @container.h - 5)
+    @album_info_pane.list = @model.selected.display_formatted(true).split("\n")
+    @album_info_pane.update
+    
+    @status.mode_label = 'Process album'
+    @control.prompt_label = '[e]dit metadata [Y]AML dump [b]ack: '
+  end
+  
+  def exit
+    @album_info_pane.close if @album_info_pane
+    @album_info_pane = nil
+
+    @yaml_pane.close if @yaml_pane
+    @yaml_pane = nil
+  end
+  
+  def dispatch(key)
+    case key
+    when 'e'
+      @status.message = 'TODO: album metadata editing'
+    when 'h'
+      @yaml_pane.visible = false if @yaml_pane
+      @album_info_pane.visible = true if @album_info_pane
+
+      @status.mode_label = 'Process album'
+      @control.prompt_label = '[e]dit metadata [Y]AML dump [b]ack: '
+      @status.message = ''
+    when 'Y'
+      @album_info_pane.visible = false
+      
+      unless @yaml_pane
+        @yaml_pane = FLNSlidingTextReader.new(@container, 'YAMLPane',
+                                              2, 1, @container.w - 4, @container.h - 5)
+        @yaml_pane.list = YAML.dump(@model.selected).split("\n")
+        @yaml_pane.update
+      else
+        @yaml_pane.visible = true
+      end
+
+      @status.mode_label = 'View YAML'
+      @control.prompt_label = '[e]dit metadata [h]ide YAML [b]ack: '
+      @status.message = ''
+    when 'b', 'Q', 'q'
+      @status.message = "Done with '#{@model.selected.name}'!"
+      @model.selected = nil
+    else
+      pass_the_buck(key)
+    end
+  end
+end
+
+class BrowseMode < Mode
+  def enter
+    if !@chooser_pane
+      @chooser_pane = AlbumList.new(@container, 'Album chooser',
+                                    2, 1, @container.w - 4, @container.h - 5) do |album|
+        @album_model.selected = album
+      end
+    elsif @chooser_pane.visible != true
+      @chooser_pane.visible = true
+    end
+    
+    update
+  end
+  
+  def exit
+    @chooser_pane.visible = false if @chooser_pane
+  end
+  
+  def update
+    @chooser_pane.album_list = @model.narrowed_list
+
+    @status.mode_label = 'Choose album'
+    if @model.list != @model.narrowed_list
+      MY_LOGGER.info("original album list is [#{@model.list}] and current list is [#{@model.narrowed_list}]")
+      @control.prompt_label = "[n]arrow results ([c]lear narrowing) [p]rocess highlighted album [b]ack: "
+    else
+      @control.prompt_label = "[n]arrow results [p]rocess highlighted album [b]ack: "
+    end
+    JTTui.activewindow = @chooser_pane
+  end
+  
+  def dispatch(key)
+    case key
+    when 'n'
+      get_additional_term
+    when 'c'
+      @model.clear_narrowing!
+      @status.message = "narrowing cleared"
+    when 'p', 'e', 'C-j', 'C-m'
+      @model.selected = current_album
+      @status.message = "selected #{current_album.artist_name} - #{current_album.name} for processing"
+    when 'b', 'Q', 'q'
+      reset
+      @status.message = 'back to finding albums!'
+    when ('0'..'9')
+      get_line_jump(key)
+    else
+      pass_the_buck(key)
+    end
   end
   
   def current_album
-    @model[@cursor_line]
+    @chooser_pane.current_album
   end
   
-  def repaint
-    @window.clear
-
-    if @top + @height < @cursor_line || @top > @cursor_line
-      @top = [@cursor_line - @height / 3, 0].max
-    end
-    
-    @model[@top, @height].each_with_index do |album,idx|
-      @window.setpos(idx, 0)
-      @window.addstr(album_to_entry(@top + idx + 1, album))
-    end
-
-    highlight_line(@cursor_line)
-    @window.refresh
-  end
-  
-  def scroll_up
-    hop_increment = @height / 2
-    cur_y = @cursor_line - @top
-
-    if (@cursor_line > 0)
-      if (0 == @top && cur_y > 0) || (cur_y > 2)
-        unhighlight_line(@cursor_line)
-        @cursor_line -= 1
-        highlight_line(@cursor_line)
-        @window.refresh
-      else
-        @top = [0, @top - hop_increment].max
-        @cursor_line -= 1
-        repaint
-      end
-    end
-  end
-
-  def scroll_down
-    hop_increment = @height / 2
-    cur_y = @cursor_line - @top
-
-    if (@cursor_line < @model.size - 1)
-      if (@top + @height > @model.size) || (cur_y < @height - 3)
-        unhighlight_line(@cursor_line)
-        @cursor_line += 1
-        highlight_line(@cursor_line)
-        @window.refresh
-      elsif
-        @top += hop_increment
-        @cursor_line += 1
-        repaint
-      end
-    end
-  end
-  
-  def highlight_line(index)
-    line_text = album_to_entry(index + 1, @model[index])
-    line_y = index - @top
-
-    if (0...@height) === line_y 
-      @window.setpos(line_y, 0)
-      @window.attron(A_REVERSE)
-      @window.attron(A_BOLD)
-      @window.addstr(line_text + ' ' * (@width - line_text.size))
-      @window.attroff(A_BOLD)
-      @window.attroff(A_REVERSE)
-    end
-  end
-
-  def unhighlight_line(index)
-    line_text = album_to_entry(index + 1, @model[index])
-    line_y = index - @top
-
-    if (0...@height) === line_y 
-      @window.setpos(line_y, 0)
-      @window.addstr(line_text)
-      @window.clrtoeol
-    end
-  end
-
   private
   
-  def album_to_entry(index, album)
-    "#{"%03d" % index}. #{album.artist_name} - #{album.name}"
+  def reset
+    @model.reset_list!
+    @chooser_pane.close if @chooser_pane
+    @chooser_pane = nil
   end
-end
+  
+  def get_additional_term
+    @control.prompt_with_callback('Narrow search', 'additional term: ', '') { |term| @model.narrow(term) }
+  end
 
-class PendingStatus
-  attr_accessor :loaded, :total
-  
-  def initialize(loaded, total)
-    @loaded = loaded
-    @total = total
-  end
-  
-  def loaded=(value)
-    @loaded = value
-    refresh
-  end
-  
-  def refresh
-    setpos(0, 0)
-    clrtoeol
-    setpos(0, 2)
-    attron(A_BOLD)
-    addstr("#{@total.to_s} albums pending")
-    addstr(", #{@loaded.to_s} loaded for processing") if @loaded && @loaded > 0
-    attroff(A_BOLD)
-  end
-end
-
-  
-def display_info(info)
-  info_pane = InfoDisplayPane.new(info)
-  loop do
-    case @processor_screen.mode_select("viewing info (up /down, k / j, u / d or [b]ack): ")
-    when ?k, ?u, KEY_UP
-      info_pane.scroll_up
-      refresh
-    when ?j, ?d, KEY_DOWN
-      info_pane.scroll_down
-      refresh
-    when ?b, ?Q, ?q
-      info_pane.hide
-      break
+  def get_line_jump(key)
+    @control.prompt_with_callback('Jump to line', 'line to jump to: ', key) do |selected|
+      @chooser_pane.focusedentry = selected.to_i - 1
+      @container.update
     end
   end
-
-  info_pane.destroy
-  refresh
 end
 
-def process_album(album)
-  @pending_status.loaded = 1
-
-  @processor_screen.mode_label("Process album")
-  @processor_screen.display_status("Refreshing metadata for #{album.artist_name} - #{album.name} from source files")
+class SearchMode < Mode
+  def enter
+    set_status
+    
+    @model.reset_list! if @model.list
+    @control.set_active!
+  end
   
-  reloaded_album = AlbumDao.reload_album_from_files(album)
-  track_pane = InfoDisplayPane.new(reloaded_album.display_formatted)
-
-  @processor_screen.display_status("Processing #{reloaded_album.artist_name} - #{reloaded_album.name}")
-
-  loop do
-    case @processor_screen.mode_select("[e]dit metadata [Y]AML dump [b]ack: ")
-    when ?e, KEY_CTRL_J
-      @processor_screen.display_status("TODO: album editing for '#{reloaded_album.name}'")
-    when ?S
-      @processor_screen.display_status("TODO: album archiving for '#{reloaded_album.name}'")
-    when ?Y
-      @processor_screen.display_status("Displaying YAML for '#{reloaded_album.name}'")
-      track_pane.hide
-      display_info(YAML.dump(reloaded_album))
-      track_pane.show
-    when ?u, ?k, KEY_UP
-      track_pane.scroll_up
-    when ?d, ?j, KEY_DOWN
-      track_pane.scroll_down
-    when ?b, ?q, ?Q
-      @processor_screen.display_status("Done with '#{reloaded_album.name}'!")
-      break
+  def dispatch(key)
+    case key
+    when 'f'
+      get_albums
+    when 'r'
+      random = AlbumDao.choose_randomly
+      @model.selected = random
+      @status.message = "#{random.artist_name} - #{random.name} chosen at random for processing"
+    when 'm'
+      recent = AlbumDao.choose_most_recent
+      @model.selected = recent
+      @status.message = "#{recent.artist_name} - #{recent.name} is the most recently added album"
+    when 'Q', 'q'
+      @status.message = ''
+      @container.addmessage nil, :quitloop, key
     else
-      @processor_screen.clear_status
+      pass_the_buck(key)
     end
-    
-    refresh
   end
   
-  track_pane.destroy
-  @pending_status.loaded = 0
-end
+  private
+  
+  def set_status
+    @status.mode_label = 'Top level'
+    @control.prompt_label = '[f]ind albums [r]andom album [m]ost recent album [q]uit: '
+  end
+  
+  def get_albums
+    @control.prompt_with_callback('Find albums', 'cached metadata search: ', '') do |query|
+      find_albums(query) 
+      @container.update
+    end
+  end
+  
+  def find_albums(query)
+    MY_LOGGER.info("SearchMode.find_albums looking for term #{query}")
+    @status.message = "searching Euterpe metadata cache for albums mentioning '#{query}'..."
 
-def choose_random_album
-  process_album(AlbumDao.choose_randomly)
-end
+    start_time = Time.now
+    query.chomp!
+    @model.reset_list!
+    @model.narrow(query)
+    finish_time = Time.now
 
-def choose_most_recent_album
-  process_album(AlbumDao.choose_most_recent)
-end
-
-def process_found_albums(found_albums)
-  original_albums = found_albums
-  album_window = AlbumPane.new(found_albums)
-
-  loop do
-    @pending_status.loaded = found_albums.size
-
-    @processor_screen.mode_label('Choose album')
-    if original_albums != found_albums
-      browser_prompt = "[n]arrow results ([c]lear narrowing) [p]rocess highlighted album [b]ack: "
+    time = finish_time - start_time
+    
+    MY_LOGGER.info("SearchMode.find_albums found [#{@model.list}]")
+    found_albums = @model.list || []
+    case found_albums.size
+    when 0
+      @status.message = "no results (query ran in #{time.to_f} seconds)"
+      set_status
+    when 1
+      @status.message = "single album found in #{time.to_f} seconds"
+      @model.selected = found_albums.first
     else
-      browser_prompt = "[n]arrow results [p]rocess highlighted album [b]ack: "
+      @status.message = "#{found_albums.size} records found in #{time.to_f} seconds"
+    end
+  end
+end
+
+class StatusPane < FLNBorderlessPane
+  def initialize(model, parent, left, top, width)
+    super(parent, self.class.name, left, top, width, 3, '')
+    @color = JTTui.aaxz_basic
+
+    @mode_label = JTTWLabel.new(self, 'mode_label', 0, 0, self.w, 1, '')
+    @mode_label.color = JTTui.aaxz_basic
+    
+    @status_line = FLNImmediateLabel.new(self, 'status_line', 0, self.h - 1, self.w - 26, 1, '')
+    @pending = PendingStatus.new(model, self, self.h - 1, self.w)
+  end
+
+  def mode_label=(mode_name)
+    @mode_label.caption = mode_name
+  end
+  
+  def message=(value)
+    @status = value || ''
+    @status_line.caption = @status
+  end
+end
+
+class ControlPane
+  def initialize(parent, top, width)
+    MY_LOGGER.info("ControlPane.initialize starting")
+    @parent = parent
+
+    @prompt_label = JTTWLabel.new(parent, 'prompt_label', 0, top, width, 1, 'LOADING')
+    @prompt_label.color = JTTui.aaxz_basic
+  end
+  
+  def prompt_label=(value)
+    @prompt_label.caption = value
+  end
+  
+  def prompt_with_callback(mode_label, prompt_string, initial_value, &block)
+    @parent.message = ''
+    @parent.mode_label = mode_label
+    @prompt_label.caption = prompt_string
+
+    @prompt_field = FLNButtonlessEditline.new(@parent, 'prompt_field',
+                                              prompt_string.size - 1, @parent.h - 2, 
+                                              @parent.w - (prompt_string.size + 2), 1, '', true)
+    @prompt_field.get_finished(initial_value, &block)
+    JTTui.activewindow = @prompt_field
+    
+    @parent.addmessage @parent, :paint
+  end
+  
+  def set_active!
+    JTTui.activewindow = @prompt_label
+  end
+end
+
+class ProcessingApplication < FLNBorderlessPane
+  attr_reader :prompt_label
+  
+  def initialize(parent)
+    MY_LOGGER.info("ProcessingWindow.initialize setting up GUI")
+    self.visible = false
+    super(parent, self.class.name, 0, 0, parent.w, parent.h, '')
+    @color = JTTui.aaxz_basic
+    
+    @album_model = AlbumSelectionModel.new
+    @album_model.add_observer(self)
+    
+    @status_pane = StatusPane.new(@album_model, self, 0, self.h - 3, self.w)
+    MY_LOGGER.info("Status pane is #{@status_pane}")
+    @album_model.status = @status_pane
+    
+    @control_pane = ControlPane.new(@status_pane, @status_pane.h - 2, @status_pane.w)
+    
+    @status_pane.message = "Connecting to metadata cache..."
+    Euterpe::Ingestion::connect_to_euterpe
+    @status_pane.message = 'Connected to metadata cache'
+    
+    @edit_mode = EditMode.new(@album_model, self, @control_pane, @status_pane)
+    @browse_mode = BrowseMode.new(@album_model, self, @control_pane, @status_pane)
+    @search_mode = SearchMode.new(@album_model, self, @control_pane, @status_pane)
+    
+    @album_model.total = Euterpe::Dashboard::Album.count
+    self.visible = true
+    MY_LOGGER.info("#{@album_model.total} albums loaded")
+  end
+  
+  def keypress(key)
+    @current_mode.dispatch(key)
+  end
+  
+  def update(*args)
+    MY_LOGGER.info("ProcessingWindow.update#before with mode #{@current_mode}")
+
+    if @album_model.selected
+      new_mode = @edit_mode
+    elsif @album_model.list && @album_model.list.size > 1
+      new_mode = @browse_mode
+    else
+      new_mode = @search_mode
     end
     
-    mode = @processor_screen.mode_select(browser_prompt)
-    case mode
-    when ?n
-      @processor_screen.mode_label("Narrow search")
-      @processor_screen.clear_status
-      search_term = @processor_screen.prompt_string('additional term: ')
+    if new_mode != @current_mode
+      @current_mode.exit if @current_mode
+      @current_mode = new_mode
+      @current_mode.enter
 
-      @processor_screen.display_status("refining search...")
-      found_albums = narrow_albums(found_albums, search_term)
-      if 1 == found_albums.size
-        album_window.hide
-        process_album(found_albums.first)
-        album_window.show
-        
-        found_albums = original_albums
-      elsif 1 < found_albums.size
-        album_window.model = found_albums
-        addstr("#{found_albums.size} found")
-      else
-        @processor_screen.display_status("no results!")
-      end
-    when ?c
-      found_albums = original_albums
-      album_window.model = found_albums
-      @processor_screen.display_status("narrowing cleared")
-    when ?p, ?e, KEY_CTRL_J
-      @processor_screen.mode_label("Process album")
-      @processor_screen.clear_status
-
-      album_window.hide
-      process_album(album_window.current_album)
-      album_window.show
-    when ?k, ?u, KEY_UP
-      @processor_screen.clear_status
-      album_window.scroll_up
-    when ?j, ?d, KEY_DOWN
-      @processor_screen.clear_status
-      album_window.scroll_down
-    when ?b, ?Q, ?q
-      album_window.destroy
-      refresh
-      break
-    when (?0..?9)
-      @processor_screen.mode_label("Jump to line")
-      @processor_screen.clear_status
-      number_string = @processor_screen.prompt_string('line to jump to: ', mode.chr)
-      number = number_string.to_i
-
-      album_window.cursor_line = number - 1
+      addmessage self, :paint
+    else
+      @current_mode.update if @current_mode
     end
+
+    MY_LOGGER.info("ProcessingWindow.update#after with mode #{@current_mode}")
+  end
+
+  def paintself(pc)
+    super(pc)
+    pc.move(4, 2)
+    pc.addstra("::AOAIOXXYSZ:: music archive management system, v1", JTTui.aaxz_basic)
+    pc.move(6, 3)
+    pc.addstra("e-mail Forrest (ogd@aoaioxxysz.net) if anything weird happens.", JTTui.aaxz_basic)
   end
 end
 
-def find_albums_to_process
-  @processor_screen.mode_label("Find albums")
-  search_term = @processor_screen.prompt_string("cached metadata search: ")
+JTTui.run do |root|
+  JTTColor.new('aaxz_basic', JTCur.color_white, JTCur.color_black, 0, 0).recompute
+  JTTColor.new('aaxz_important', JTCur.color_white, JTCur.color_black, JTCur.attr_bold, JTCur.attr_bold).recompute
+  JTTColor.new('aaxz_reversed', JTCur.color_black, JTCur.color_white, JTCur.attr_bold, JTCur.attr_bold).recompute
+  JTTColor.new('color_edit_dis', JTCur.color_white, JTCur.color_black, 0, 0).recompute
+  JTTColor.new('color_edit', JTCur.color_white, JTCur.color_black, JTCur.attr_bold, JTCur.attr_bold).recompute
+  JTTColor.new('color_edit_hi', JTCur.color_white, JTCur.color_black, JTCur.attr_bold, JTCur.attr_bold).recompute
 
-  @processor_screen.display_status("searching Euterpe metadata cache for albums mentioning '#{search_term}'...")
-  start_time = Time.now
-  found_albums = narrow_albums([], search_term)
-  finish_time = Time.now
-  time = finish_time - start_time
-  addstr("#{found_albums.size} found in #{time.to_f} seconds")
-
-  return unless found_albums.size >= 0
-
-  if 1 == found_albums.size
-    process_album(found_albums.first)
-  elsif 1 < found_albums.size
-    process_found_albums(found_albums)
-  else
-    @processor_screen.display_status("no results!")
-  end
+  processing = ProcessingApplication.new(root)
 end
-
-def top_level
-  @pending_status = PendingStatus.new(0, Euterpe::Dashboard::Album.count)
-
-  loop do
-    @pending_status.loaded = 0
-    
-    @processor_screen.mode_label('Top level')
-    case @processor_screen.mode_select("[f]ind albums [r]andom album [m]ost recent album [q]uit: ")
-    when ?f
-      find_albums_to_process
-    when ?m
-      choose_most_recent_album
-    when ?r
-      choose_random_album
-    when ?b, ?Q, ?q
-      return
-    end
-  end
-end
-
-init_screen
-begin
-  cbreak
-  noecho
-  stdscr.keypad(true)
-
-  setpos(2, 4)
-  addstr("::AOAIOXXYSZ:: music archive management system, v1")
-  setpos(3, 6)
-  addstr("e-mail Forrest (ogd@aoaioxxysz.net) if anything weird happens.")
-
-  @processor_screen = ProcessorScreen.new
-
-  @processor_screen.display_status("Connecting to database...")
-  ActiveRecord::Base.establish_connection(
-    :adapter  => "postgresql",
-    :username => "ogd",
-    :database => "euterpe-dash-dev",
-    :encoding => "SQL_ASCII"
-  )
-  refresh
-  addstr("connected")
-
-  top_level
-ensure
-  clear
-  refresh
-  close_screen
-end
-

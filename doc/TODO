@@ -1,7 +1,10 @@
 management console:
 * manage pending content:
-** write periodic task to connect to MusicBrainz and try to match unmatched tracks
-* add random album processing
+** write periodic task to connect to MusicBrainz and try to match unmatched
+   tracks
+** cache images and test that all metadata is being cached properly
+* modify the processing script to use cached metadata instead of reloading
+  from MP3 files
 * prompt to compare two albums
 * support the replacement of an album already existing in the archive with a
   better version
@@ -27,6 +30,7 @@ heuristic metadata correction:
   release codes (i.e. not sticking them on the encoder string)
 * handle "pretty" canonicalization of featured artist list
 * eliminate iTunNORM comments
+* copy producer credits to iTunes tags
 
 audio file validation / QA:
 * build a façade over existing ingestion framework that's observable by
