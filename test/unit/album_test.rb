@@ -385,4 +385,20 @@ END
     assert_equal '12"s And MORE...', album.subtitle
     assert_equal 'The Celluloid Years: 12"s And MORE...', album.reconstituted_name
   end
+  
+  def test_album_genre_propagation
+    albums = load_albums("324/Boutokunotaiyo/*.mp3")
+
+    album = albums.first
+    assert_equal 'Grindcore', album.genre
+    album.tracks.each do |track|
+      assert_equal 'Grindcore', track.genre
+    end
+    
+    album.genre = 'Japanese Metal'
+    assert_equal 'Japanese Metal', album.genre
+    album.tracks.each do |track|
+      assert_equal 'Japanese Metal', track.genre
+    end
+  end
 end

@@ -123,7 +123,7 @@ class FLNButtonlessEditline < JTTWEditline
   end
   
   def get_finished(starttext, &block)
-    @editor.text = starttext
+    @editor.text = '' << starttext
     @editor.movetoeot
     @finished_callback = Proc.new(&block)
   end

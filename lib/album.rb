@@ -31,6 +31,20 @@ class Album
     end
   end
   
+  def genre=(new_genre)
+    tracks.each do |track|
+      track.genre = new_genre if track.genre == genre
+    end
+    @genre = new_genre
+  end
+  
+  def release_date=(new_release_date)
+    tracks.each do |track|
+      track.release_date = new_release_date if track.release_date == release_date
+    end
+    @release_date = new_release_date
+  end
+  
   # HEURISTIC: this function serves a VERY SPECIFIC function, which is swapping
   # all the encoder fields for my GRIP-encoded tracks into the encoder field
   # from the comments field, where I stashed them.
@@ -227,6 +241,21 @@ class Album
     end
     
     formatted_album
+  end
+  
+  def musicbrainz_info_formatted
+    formatted_musicbrainz_info = "Musicbrainz album info:\n"
+
+    musicbrainz_attributes = []
+    musicbrainz_attributes << ["artist UUID", musicbrainz_album_artist_id || "''"]
+    musicbrainz_attributes << ["album UUID", musicbrainz_album_id || "''"]
+    musicbrainz_attributes << ["release country", musicbrainz_album_release_country || "''"]
+    musicbrainz_attributes << ["status", musicbrainz_album_status || "''"]
+    musicbrainz_attributes << ["type", musicbrainz_album_type || "''"]
+
+    formatted_musicbrainz_info << justify_attribute_list(musicbrainz_attributes)
+    
+    formatted_musicbrainz_info
   end
   
   private

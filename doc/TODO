@@ -1,10 +1,11 @@
 management console:
+* create validation framework for data entry
 * manage pending content:
 ** write periodic task to connect to MusicBrainz and try to match unmatched
    tracks
 ** cache images and test that all metadata is being cached properly
-* modify the processing script to use cached metadata instead of reloading
-  from MP3 files
+** modify the processing script to use cached metadata instead of reloading
+   from MP3 files
 * prompt to compare two albums
 * support the replacement of an album already existing in the archive with a
   better version
@@ -63,6 +64,7 @@ audio file validation / QA:
 ** track is lacking MusicBrainz metadata
 
 code quality:
+* create test harness for controller infrastructure
 * document all heuristics used in code base
 * collect and / or remedy all inline TODOS
 * improve overall code coverage to over 95%

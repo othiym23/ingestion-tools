@@ -60,7 +60,7 @@ def cache_pending_media(archive_base)
     puts "::AOAIOXXYSZ:: music archive management system, v1: #{updated_tracks.size} tracks added" 
     puts '  freshly cached:' 
     updated_tracks.sort{|tl,tr| tl.artist_name + tl.name <=> tr.artist_name + tr.name}.each do |track|
-      puts "    #{track.artist_name} - #{track.name}"
+      puts "    #{track.artist_name} - #{track.reconstituted_name}"
     end
   end
 
