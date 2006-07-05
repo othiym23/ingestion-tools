@@ -15,6 +15,7 @@ require 'ui/album_selection_model'
 require 'ui/fln_widgets'
 
 MY_LOGGER = Logger.new('jttui_trace.log')
+MY_LOGGER.level = Logger::DEBUG
 #ActiveRecord::Base.logger = Logger.new('ingestion.log')
 
 ARCHIVE_BASE = '/data/music/mp3'
@@ -26,14 +27,31 @@ raise IOError.new("Path #{source_directory} does not exist!") unless File.exists
 
 at_exit { puts "\nSeeya!" }
 
-# Hack into the guts of JTTui so I can see what it's doing, as well as
-# patching a bug or two.
+# Hack into the guts of JTTui so I can log what it's doing.
 module JTTui
+  alias_method :_add_message, :addmessage
+  def addmessage(*msg)
+    target_name = (msg[0] ? msg[0].name : 'ROOT CONTEXT')
+    log_message = "[#{target_name}] target for newly added message #{msg[1]}"
+    log_message << " '#{msg[2]}'" if msg[2]
+    MY_LOGGER.debug(log_message)
+    _add_message(*msg)
+  end
+
+  alias_method :_del_messages, :delmessages
+  def delmessages(*msg)
+    target_name = (msg[0] ? msg[0].name : 'ROOT CONTEXT')
+    log_message = "[#{target_name}] target for newly added message #{msg[1]}"
+    log_message << " '#{msg[2]}'" if msg[2]
+    MY_LOGGER.debug(log_message)
+    _del_messages(*msg)
+  end
+
   alias_method :_send_message, :sendmessage
   def sendmessage(msg)
     log_message = "[#{msg[0].name}] received message #{msg[1]}"
     log_message << " '#{msg[2]}'" if msg[2]
-    MY_LOGGER.info(log_message)
+    MY_LOGGER.debug(log_message)
     _send_message(msg)
   end
 end
@@ -41,14 +59,17 @@ end
 class JTTWindow
   alias_method :_paint_self, :paintself
   def paintself(pc)
-    MY_LOGGER.info("paintself: [#{@name}]")
+    MY_LOGGER.debug("paintself: [#{@name}]")
     _paint_self(pc)
   end
-
+  
+  # PATCH: the JTTui code calls paint directly when visible= is invoked,
+  # breaking the refresh model for the component affected, as well as all
+  # its children
   def visible=(v)
     if @visible ^ v
       @visible=v
-      MY_LOGGER.info("FIXING JTTWindow.visible= by not exploding #{@name}'s message queue when pane " << (v ? "shown" : "hidden"))
+      MY_LOGGER.warn("FIXING JTTWindow.visible= by not exploding #{@name}'s message queue when pane " << (v ? "shown" : "hidden"))
       addmessage @parent, :paint
     end
   end
@@ -139,7 +160,7 @@ class AlbumList < JTTWList
   end
   
   def list_drawitem(pc, hilighted, focused, idx)
-    super
+    super(pc, hilighted, true, idx)
     pc.addstr album_string(idx)
   end
 
@@ -263,14 +284,7 @@ class AlbumMusicBrainzEditState < ControllerState
     end
     
     @status.message = 'WARNING: populating this data by hand isn\'t a good idea. Use the matcher.'
-
-    unless @album_info_pane
-      @album_info_pane = FLNSlidingTextReader.new(@context, 'AlbumInfoPane',
-                                                  2, 1, @context.w - 4, @context.h - 5)
-    else
-      @album_info_pane.visible = true
-    end
-    
+    @album_info_pane = @context.get_panel(FLNSlidingTextReader)
     @context.set_active
   end
   
@@ -279,8 +293,9 @@ class AlbumMusicBrainzEditState < ControllerState
   end
   
   def update
-    @album_info_pane.list = @model.selected.musicbrainz_info_formatted.split("\n")
+    @album_info_pane.list = @model.selected.musicbrainz_info_formatted(false, false).split("\n")
     @album_info_pane.update
+    @album_info_pane.visible = true unless @album_info_pane.visible
   end
   
   def dispatch(key)
@@ -298,20 +313,20 @@ class AlbumMusicBrainzEditState < ControllerState
     when 'b', 'Q', 'q'
       @context.change_state(EditState)
     else
-      pass_the_buck(key)
+      @album_info_pane.keypress(key)
     end
   end
 
   def get_musicbrainz_album_id
     @control.prompt_with_callback('Edit MusicBrainz album metadata', 'MusicBrainz album id: ', @model.selected.musicbrainz_album_id) do |input|
-      @model.selected.musicbrainz_album_id = input if input && input != ''
+      @model.selected.musicbrainz_album_id = ('' == input ? nil : input)
       @context.update
     end
   end
 
   def get_musicbrainz_album_artist_id
     @control.prompt_with_callback('Edit MusicBrainz album metadata', 'MusicBrainz album artist id: ', @model.selected.musicbrainz_album_artist_id) do |input|
-      @model.selected.musicbrainz_album_artist_id = input if input && input != ''
+      @model.selected.musicbrainz_album_artist_id = ('' == input ? nil : input)
       @context.update
     end
   end
@@ -319,7 +334,7 @@ class AlbumMusicBrainzEditState < ControllerState
   def get_musicbrainz_album_release_type
     @status.message = 'Valid values are "album", "single", "live", "e.p."'
     @control.prompt_with_callback('Edit MusicBrainz album metadata', 'MusicBrainz album release type: ', @model.selected.musicbrainz_album_type) do |input|
-      @model.selected.musicbrainz_album_type = input if input && input != ''
+      @model.selected.musicbrainz_album_type = ('' == input ? nil : input)
       @context.update
     end
   end
@@ -327,7 +342,7 @@ class AlbumMusicBrainzEditState < ControllerState
   def get_musicbrainz_album_release_status
     @status.message = 'Valid values are "official", "promotional", or "bootleg"'
     @control.prompt_with_callback('Edit MusicBrainz album metadata', 'MusicBrainz album release status: ', @model.selected.musicbrainz_album_status) do |input|
-      @model.selected.musicbrainz_album_status = input if input && input != ''
+      @model.selected.musicbrainz_album_status = ('' == input ? nil : input)
       @context.update
     end
   end
@@ -335,7 +350,7 @@ class AlbumMusicBrainzEditState < ControllerState
   def get_musicbrainz_album_release_country
     @status.message = 'Use two-character ISO country codes (US, UK, JP, DE)'
     @control.prompt_with_callback('Edit MusicBrainz album metadata', 'MusicBrainz album release country: ', @model.selected.musicbrainz_album_release_country) do |input|
-      @model.selected.musicbrainz_album_release_country = input.upcase if input && input != ''
+      @model.selected.musicbrainz_album_release_country = ('' == input ? nil : input.upcase)
       @context.update
     end
   end
@@ -347,7 +362,7 @@ class AlbumMetadataEditState < ControllerState
   end
   
   def prompt_string
-    '[n]ame [s]ort sub[t]itle [v]ersion [y]ear [g]enre [a]rtist ([S]ort) [M]usicBrainz [b]ack: '
+    '[n]ame [s]ort [a]rtist ([S]ort) [y]ear [g]enre [c]omp? [m]ixed by sub[t]itle [v]ersion [M]usicBrainz [b]ack: '
   end
   
   def enter
@@ -355,13 +370,7 @@ class AlbumMetadataEditState < ControllerState
       raise IllegalStateError.new("#{self.class.name} requires an album be selected")
     end
     
-    unless @album_info_pane
-      @album_info_pane = FLNSlidingTextReader.new(@context, 'AlbumInfoPane',
-                                                  2, 1, @context.w - 4, @context.h - 5)
-    else
-      @album_info_pane.visible = true
-    end
-    
+    @album_info_pane = @context.get_panel(FLNSlidingTextReader)
     @context.set_active
   end
   
@@ -370,8 +379,9 @@ class AlbumMetadataEditState < ControllerState
   end
   
   def update
-    @album_info_pane.list = @model.selected.display_formatted(false).split("\n")
+    @album_info_pane.list = @model.selected.album_header_formatted(false, false).split("\n")
     @album_info_pane.update
+    @album_info_pane.visible = true unless @album_info_pane.visible
   end
   
   def dispatch(key)
@@ -380,10 +390,6 @@ class AlbumMetadataEditState < ControllerState
       get_album_name
     when 's'
       get_album_sort_order
-    when 't'
-      get_album_subtitle
-    when 'v'
-      get_album_version
     when 'a'
       get_album_artist_name
     when 'S'
@@ -392,19 +398,27 @@ class AlbumMetadataEditState < ControllerState
       get_album_release_year
     when 'g'
       get_album_genre
+    when 'm'
+      get_album_mixed_by
+    when 'c'
+      toggle_album_compilation
+    when 't'
+      get_album_subtitle
+    when 'v'
+      get_album_version
     when 'b', 'Q', 'q'
       @context.change_state(EditState)
     when 'M'
       @context.change_state(AlbumMusicBrainzEditState)
     else
-      pass_the_buck(key)
+      @album_info_pane.keypress(key)
     end
   end
 
   def get_album_name
     @status.message = ''
     @control.prompt_with_callback('Edit album metadata', 'album name: ', @model.selected.name) do |input|
-      @model.selected.name = input
+      @model.selected.name = ('' == input ? nil : input)
       @context.update
     end
   end
@@ -412,15 +426,15 @@ class AlbumMetadataEditState < ControllerState
   def get_album_sort_order
     @status.message = ''
     @control.prompt_with_callback('Edit album metadata', 'sort name: ', @model.selected.sort_order) do |input|
-      @model.selected.sort_order = input
+      @model.selected.sort_order = ('' == input ? nil : input)
       @context.update
     end
   end
 
   def get_album_subtitle
-    @status.message = 'Only some albums have subtitles, generally following semicolons'
+    @status.message = 'Only some albums have subtitles, generally following colons'
     @control.prompt_with_callback('Edit album metadata', 'subtitle: ', @model.selected.subtitle) do |input|
-      @model.selected.subtitle = input
+      @model.selected.subtitle = ('' == input ? nil : input)
       @context.update
     end
   end
@@ -428,7 +442,7 @@ class AlbumMetadataEditState < ControllerState
   def get_album_version
     @status.message = 'Use the album version to disambiguate between independent releases'
     @control.prompt_with_callback('Edit album metadata', 'version: ', @model.selected.version_name) do |input|
-      @model.selected.version_name = input
+      @model.selected.version_name = ('' == input ? nil : input)
       @context.update
     end
   end
@@ -436,7 +450,7 @@ class AlbumMetadataEditState < ControllerState
   def get_album_genre
     @status.message = 'Automatically propagate the album\'s genre out to the tracks'
     @control.prompt_with_callback('Edit album metadata', 'genre: ', @model.selected.genre) do |input|
-      @model.selected.genre = input
+      @model.selected.genre = ('' == input ? nil : input)
       @context.update
     end
   end
@@ -444,7 +458,7 @@ class AlbumMetadataEditState < ControllerState
   def get_album_artist_name
     @status.message = ''
     @control.prompt_with_callback('Edit album metadata', 'artist name: ', @model.selected.artist_name) do |input|
-      @model.selected.artist_name = input
+      @model.selected.artist_name = ('' == input ? nil : input)
       @context.update
     end
   end
@@ -452,7 +466,15 @@ class AlbumMetadataEditState < ControllerState
   def get_album_artist_sort_order
     @status.message = ''
     @control.prompt_with_callback('Edit album metadata', 'artist sort name: ', @model.selected.artist_sort_order) do |input|
-      @model.selected.artist_sort_order = input
+      @model.selected.artist_sort_order = ('' == input ? nil : input)
+      @context.update
+    end
+  end
+
+  def get_album_mixed_by
+    @status.message = 'Reserve this attribute for continuous mixes.'
+    @control.prompt_with_callback('Edit album metadata', 'mixed by: ', @model.selected.mixer) do |input|
+      @model.selected.mixer = ('' == input ? nil : input)
       @context.update
     end
   end
@@ -460,14 +482,24 @@ class AlbumMetadataEditState < ControllerState
   def get_album_release_year
     @status.message = ''
     @control.prompt_with_callback('Edit album metadata', 'artist sort name: ', @model.selected.release_date) do |input|
-      @model.selected.release_date = input
+      @model.selected.release_date = ('' == input ? nil : input)
       @context.update
+    end
+  end
+  
+  def toggle_album_compilation
+    if @model.selected.compilation
+      @model.selected.compilation = !@model.selected.compilation
+      @status.message = 'album was compilation, but now it\'s not'
+    else
+      @model.selected.compilation = !@model.selected.compilation
+      @status.message = 'album wasn\'t a compilation, but now it is'
     end
   end
 end
 
-class YAMLState < ControllerState
-  def YAMLState.state_name
+class AlbumYAMLState < ControllerState
+  def AlbumYAMLState.state_name
     'View YAML'
   end
   
@@ -480,13 +512,7 @@ class YAMLState < ControllerState
       raise IllegalStateError.new("#{self.class.name} requires an album be selected")
     end
     
-    unless @yaml_pane
-      @yaml_pane = FLNSlidingTextReader.new(@context, 'YAMLPane', 2, 1,
-                                            @context.w - 4, @context.h - 5)
-    else
-      @yaml_pane.visible = true
-    end
-    
+    @yaml_pane = @context.get_panel(FLNSlidingTextReader)
     @context.set_active
   end
   
@@ -495,29 +521,263 @@ class YAMLState < ControllerState
   end
   
   def update
-    @yaml_pane.list = YAML.dump(@model.selected).split("\n")
+    @yaml_pane.list = YAML.dump(content).split("\n")
     @yaml_pane.update
+    @yaml_pane.visible = true unless @yaml_pane.visible
   end
   
   def dispatch(key)
     case key
     when 'e'
       @status.message = ''
-      @context.change_state(AlbumMetadataEditState)
+      edit
     when 'h'
-      @status.message = ''
-      @context.change_state(EditState)
+      hide
     when 'b', 'Q', 'q'
-      @status.message = "Done with '#{@model.selected.reconstituted_name}'!"
-      @model.selected = nil
-
-      if @model.list && @model.list.size > 0
-        @context.change_state(BrowseState)
-      else
-        @context.change_state(StartState)
-      end
+      prev_mode
     else
-      pass_the_buck(key)
+      @yaml_pane.keypress(key)
+    end
+  end
+  
+  def edit
+    @context.change_state(AlbumMetadataEditState)
+  end
+  
+  def hide
+    @status.message = ''
+    @context.change_state(EditState)
+  end
+  
+  def content
+    @model.selected
+  end
+  
+  def prev_mode
+    @status.message = "Done with '#{@model.selected.reconstituted_name}'!"
+    @model.selected = nil
+
+    if @model.list && @model.list.size > 0
+      @context.change_state(BrowseState)
+    else
+      @context.change_state(StartState)
+    end
+  end
+end
+
+class TrackYAMLState < AlbumYAMLState
+  def enter(track)
+    unless track
+      raise IllegalStateError.new("#{self.class.name} requires a track be selected")
+    end
+    
+    @selected_track = track
+
+    @yaml_pane = @context.get_panel(FLNSlidingTextReader)
+    @context.set_active
+  end
+  
+  def content
+    @selected_track
+  end
+  
+  def hide
+    edit
+  end
+
+  def edit
+    @status.message = ''
+    @context.change_state(TrackMetadataEditState, @selected_track)
+  end
+  
+  def prev_mode
+    @status.message = "Done viewing YAML for '#{@selected_track.reconstituted_name}'!"
+    @context.change_state(EditState)
+  end
+end
+
+class TrackMetadataEditState < ControllerState
+  def TrackMetadataEditState.state_name
+    'Edit track-level metadata'
+  end
+  
+  def prompt_string
+    '[n]ame [s]ort [a]rtist ([S]ort) [r]emix [g]enre [y]ear [f]eat. [c]omment [M]usicBrainz ([Y]AML) [b]ack: '
+  end
+  
+  def enter(track)
+    unless track
+      raise IllegalStateError.new("#{self.class.name} requires a track be selected")
+    end
+    
+    @selected_track = track
+    
+    @track_info_pane = @context.get_panel(FLNSlidingTextReader)
+    @context.set_active
+  end
+  
+  def exit
+    @track_info_pane.visible = false
+  end
+  
+  def update
+    @track_info_pane.list = @selected_track.display_formatted(false, false).split("\n")
+    @track_info_pane.update
+    @track_info_pane.visible = true unless @track_info_pane.visible
+  end
+  
+  def dispatch(key)
+    case key
+    when 'n'
+      get_track_name
+    when 's'
+      get_track_sort_order
+    when 'a'
+      get_track_artist_name
+    when 'S'
+      get_track_artist_sort_order
+    when 'y'
+      get_track_release_year
+    when 'g'
+      get_track_genre
+    when 'r'
+      get_track_remix_name
+    when 'c'
+      get_track_comment
+    when 'f'
+      @status.message = 'TODO: featured artist editing mode'
+    when 'b', 'Q', 'q'
+      @status.message = "Done with track '#{@selected_track.name}'!"
+      @context.change_state(EditState)
+    when 'M'
+      @context.change_state(TrackMusicBrainzEditState, @selected_track)
+    when 'Y'
+      @context.change_state(TrackYAMLState, @selected_track)
+    else
+      @track_info_pane.keypress(key)
+    end
+  end
+
+  def get_track_name
+    @status.message = ''
+    @control.prompt_with_callback('Edit track metadata', 'album name: ', @selected_track.name) do |input|
+      @selected_track.name = ('' == input ? nil : input)
+      @context.update
+    end
+  end
+
+  def get_track_sort_order
+    @status.message = ''
+    @control.prompt_with_callback('Edit track metadata', 'sort name: ', @selected_track.sort_order) do |input|
+      @selected_track.sort_order = ('' == input ? nil : input)
+      @context.update
+    end
+  end
+
+  def get_track_release_year
+    @status.message = ''
+    @control.prompt_with_callback('Edit track metadata', 'artist sort name: ', @selected_track.release_date) do |input|
+      @selected_track.release_date = ('' == input ? nil : input)
+      @context.update
+    end
+  end
+
+  def get_track_artist_name
+    @status.message = ''
+    @control.prompt_with_callback('Edit track metadata', 'artist name: ', @selected_track.artist_name) do |input|
+      @selected_track.artist_name = ('' == input ? nil : input)
+      @context.update
+    end
+  end
+
+  def get_track_artist_sort_order
+    @status.message = ''
+    @control.prompt_with_callback('Edit track metadata', 'artist sort name: ', @selected_track.artist_sort_order) do |input|
+      @selected_track.artist_sort_order = ('' == input ? nil : input)
+      @context.update
+    end
+  end
+  
+  def get_track_genre
+    @status.message = ''
+    @control.prompt_with_callback('Edit track metadata', 'genre: ', @selected_track.genre) do |input|
+      @selected_track.genre = ('' == input ? nil : input)
+      @context.update
+    end
+  end
+  
+  def get_track_remix_name
+    @status.message = ''
+    @control.prompt_with_callback('Edit track metadata', 'remix: ', @selected_track.remix) do |input|
+      @selected_track.remix = ('' == input ? nil : input)
+      @context.update
+    end
+  end
+  
+  def get_track_comment
+    @status.message = ''
+    @control.prompt_with_callback('Edit track metadata', 'comment: ', @selected_track.format_comments) do |input|
+      @selected_track.comment = ('' == input ? nil : input)
+      @context.update
+    end
+  end
+end
+
+class TrackMusicBrainzEditState < ControllerState
+  def TrackMusicBrainzEditState.state_name
+    'Edit track-level MusicBrainz metadata'
+  end
+  
+  def prompt_string
+    'track [i]d a[r]tist id [b]ack: '
+  end
+  
+  def enter(track)
+    unless track
+      raise IllegalStateError.new("#{self.class.name} requires an album be selected")
+    end
+    
+    @selected_track = track
+    
+    @status.message = 'WARNING: populating this data by hand isn\'t a good idea. Use the matcher.'
+    @track_info_pane = @context.get_panel(FLNSlidingTextReader)
+    @context.set_active
+  end
+  
+  def exit
+    @track_info_pane.visible = false
+  end
+  
+  def update
+    @track_info_pane.list = @selected_track.musicbrainz_info_formatted.split("\n")
+    @track_info_pane.update
+    @track_info_pane.visible = true unless @track_info_pane.visible
+  end
+  
+  def dispatch(key)
+    case key
+    when 'i'
+      get_musicbrainz_track_id
+    when 'r'
+      get_musicbrainz_track_artist_id
+    when 'b', 'Q', 'q'
+      @context.change_state(TrackMetadataEditState, @selected_track)
+    else
+      @track_info_pane.keypress(key)
+    end
+  end
+
+  def get_musicbrainz_track_id
+    @control.prompt_with_callback('Edit MusicBrainz track metadata', 'MusicBrainz track id: ', @selected_track.unique_id) do |input|
+      @selected_track.unique_id = ('' == input ? nil : input)
+      @context.update
+    end
+  end
+
+  def get_musicbrainz_track_artist_id
+    @control.prompt_with_callback('Edit MusicBrainz track metadata', 'MusicBrainz track artist id: ', @selected_track.musicbrainz_artist_id) do |input|
+      @selected_track.musicbrainz_artist_id = ('' == input ? nil : input)
+      @context.update
     end
   end
 end
@@ -537,13 +797,7 @@ class EditState < ControllerState
     end
     
     @status.message = "Displaying #{@model.selected.artist_name} - #{@model.selected.reconstituted_name}"
-    unless @album_info_pane
-      @album_info_pane = FLNSlidingTextReader.new(@context, 'AlbumInfoPane',
-                                                  2, 1, @context.w - 4, @context.h - 5)
-    else
-      @album_info_pane.visible = true
-    end
-    
+    @album_info_pane = @context.get_panel(FLNSlidingTextReader)
     @context.set_active
   end
   
@@ -553,8 +807,9 @@ class EditState < ControllerState
   
   def update
     if @model.selected
-      @album_info_pane.list = @model.selected.display_formatted(true).split("\n")
+      @album_info_pane.list = @model.selected.display_formatted(false).split("\n")
       @album_info_pane.update
+      @album_info_pane.visible = true unless @album_info_pane.visible
     end
   end
   
@@ -564,10 +819,10 @@ class EditState < ControllerState
       @status.message = ''
       @context.change_state(AlbumMetadataEditState)
     when 't'
-      @status.message = 'TODO: track-level editing'
+      get_track_to_edit
     when 'Y'
       @status.message = ''
-      @context.change_state(YAMLState)
+      @context.change_state(AlbumYAMLState)
     when 'b', 'Q', 'q'
       @status.message = "Done with '#{@model.selected.reconstituted_name}'!"
       @model.selected = nil
@@ -577,8 +832,33 @@ class EditState < ControllerState
       else
         @context.change_state(StartState)
       end
+    when ('0'..'9')
+      get_track_to_edit(key)
     else
-      pass_the_buck(key)
+      @album_info_pane.keypress(key)
+    end
+  end
+
+  def get_track_to_edit(initial_string = '')
+    @status.message = 'Enter the track to edit as disc.track (disc number is optional)'
+    @control.prompt_with_callback('Choose track to edit', 'disc.track: ', initial_string) do |input|
+      disc_number, track_number = input.split('.')
+      if nil == track_number
+        track_number = disc_number.to_i
+        disc_number = 1
+      else
+        track_number = track_number.to_i
+        disc_number = disc_number.to_i
+      end
+      
+      track = @model.selected.track(disc_number, track_number)
+      if track
+        @status.message = "Editing metadata for '#{track.reconstituted_name}'"
+        @context.change_state(TrackMetadataEditState, track)
+      else
+        @status.message = 'Invalid track!'
+        @context.update
+      end
     end
   end
 end
@@ -602,15 +882,8 @@ class BrowseState < ControllerState
       raise IllegalStateError.new("#{self.class.name} requires a list of albums be available")
     end
     
-    unless @chooser_pane
-      @chooser_pane = AlbumList.new(@context, 'Album chooser',
-                                    2, 1, @context.w - 4, @context.h - 5) do |album|
-        @model.selected = album
-        @context.change_state(EditState)
-      end
-    else
-      @chooser_pane.visible = true
-    end
+    @chooser_pane = @context.get_panel(AlbumList)
+    @context.set_active
   end
   
   def exit
@@ -620,7 +893,7 @@ class BrowseState < ControllerState
   def update
     @chooser_pane.album_list = @model.narrowed_list
     @chooser_pane.update
-    JTTui.activewindow = @chooser_pane
+    @chooser_pane.visible = true unless @chooser_pane.visible
   end
   
   def dispatch(key)
@@ -640,7 +913,7 @@ class BrowseState < ControllerState
     when ('0'..'9')
       get_line_jump(key)
     else
-      pass_the_buck(key)
+      @chooser_pane.keypress(key)
     end
   end
   
@@ -718,7 +991,7 @@ class StartState < ControllerState
 
       time = finish_time - start_time
 
-      found_albums = @model.list || []
+      found_albums = @model.narrowed_list || [@model.selected] || []
       case found_albums.size
       when 0
         @status.message = "no results (query ran in #{time.to_f} seconds)"
@@ -726,11 +999,12 @@ class StartState < ControllerState
         @status.message = "single album found in #{time.to_f} seconds"
         @model.selected = found_albums.first
         @context.change_state(EditState)
+        MY_LOGGER.debug("SearchMode.find_albums found '#{found_albums.first.name}'")
       else
         @status.message = "#{found_albums.size} records found in #{time.to_f} seconds"
         @context.change_state(BrowseState)
+        MY_LOGGER.debug("SearchMode.find_albums found [#{@model.list.map{|album| album.name}.join(', ')}]")
       end
-      MY_LOGGER.info("SearchMode.find_albums found [#{@model.list}]")
     end
   end
 end
@@ -829,16 +1103,48 @@ class ProcessingApplication < FLNBorderlessPane
   end
   
   def keypress(key)
+    # Due to the way the application delegates input to controller objects,
+    # which in turn delegate messages to the JTTui components they control,
+    # we need to clear the message queue here to ensure we don't get stuck in
+    # an infinite loop as the application dispatches to the controller, which
+    # dispatches to its component delegate(s), which propagates the message to
+    # its container (this object), ad infinitum.
+    delmessages self, :keypress
     @current_state.dispatch(key)
   end
   
-  def change_state(new_state_klass)
+  def get_panel(panel_id)
+    @panel_cache ||= {}
+    
+    unless @panel_cache[panel_id]
+      case panel_id.to_s
+      when 'AlbumList'
+        panel = AlbumList.new(self, 'Album chooser',
+                              2, 1, self.w - 4, self.h - 5) do |album|
+          @album_model.selected = album
+          self.change_state(EditState)
+        end
+      when 'FLNSlidingTextReader'
+        panel = FLNSlidingTextReader.new(self, 'Information window',
+                                         2, 1, self.w - 4, self.h - 5)
+      else
+        MY_LOGGER.fatal("Don't know how to create '#{panel_id}'!")
+        raise "Don't know how to create '#{panel_id}'!"
+      end
+      
+      @panel_cache[panel_id] = panel
+    end
+    
+    @panel_cache[panel_id]
+  end
+  
+  def change_state(new_state_klass, *args)
     MY_LOGGER.info("#{self.class.name}.change_state#before in state '#{@current_state.class.name}'")
     @previous_state = @current_state
     @current_state = new_state_klass.default
 
     @previous_state.exit if @previous_state
-    @current_state.enter if @current_state
+    @current_state.enter(*args) if @current_state
     MY_LOGGER.info("#{self.class.name}.change_state#after in state '#{@current_state.class.name}'")
     
     update

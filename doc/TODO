@@ -1,25 +1,31 @@
 management console:
 * create validation framework for data entry
+* join multiple discs into a single album
+* move values from encoder string to comments for all tracks (make encoder
+  promotion smarter)
+* resequence tracks on album
+* support the replacement of an album already existing in the archive with a
+  better version
+** prompt to compare two albums
+* canonicalize track genres against Netjuke genre list
+* canonicalize artist names against existing archive
+* support the cobbling-together of new albums from old albums (e.g. making
+  Wire's "Behind the Curtain" out of bonus tracks on Japanese releases of
+  the first three albums)
+* associate arbitrary image with track
 * manage pending content:
 ** write periodic task to connect to MusicBrainz and try to match unmatched
    tracks
 ** cache images and test that all metadata is being cached properly
 ** modify the processing script to use cached metadata instead of reloading
    from MP3 files
-* prompt to compare two albums
-* support the replacement of an album already existing in the archive with a
-  better version
-* canonicalize track genres against Netjuke genre list
-* canonicalize artist names against existing archive
-* associate arbitrary image with track
-* support the cobbling-together of new albums from old albums (e.g. making
-  Wire's "Behind the Curtain" out of bonus tracks on Japanese releases of
-  the first three albums)
 
 album ingestion:
 * split consolidated multi-disc albums back into their discs
 * acquire MusicBrainz metadata
-* classical support:
+** move MusicBrainz metadata into "shadow" MusicBrainz classes
+* acquire track lengths
+* add classical support:
 ** add reading and writing of ID3v2 fields related to orchestral and
    ensemble music (composer, conductor, soloists, ensembles)
 ** ensure that genre matches contents
@@ -30,7 +36,6 @@ heuristic metadata correction:
 * improve encoder cattle-catcher to do something different with 
   release codes (i.e. not sticking them on the encoder string)
 * handle "pretty" canonicalization of featured artist list
-* eliminate iTunNORM comments
 * copy producer credits to iTunes tags
 
 audio file validation / QA:

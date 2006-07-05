@@ -27,7 +27,12 @@ class AlbumSelectionModel < SelectionModel
       
       changed
       if @list.nil?
-        @list = narrow_albums([], term)
+        raw_list = narrow_albums([], term)
+        if raw_list && 1 == raw_list.size
+          self.selected = raw_list.first
+        else
+          @list = raw_list
+        end
       else
         narrowed_list = @list
         @narrowing_terms.each do |term|

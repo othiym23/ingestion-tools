@@ -187,7 +187,74 @@ class Track
     @featured_artists.collect! { |artist| StringUtils.mixed_case(artist) }
   end
   
+  def display_formatted(simple = false, omit = true)
+    formatted_track = ''
+    
+    out = '    '
+    out << "#{disc.number}." if disc && disc.album && disc.album.discs.compact.size > 1
+    out << "#{sequence}: "
+    out << "#{artist_name} - " if (disc && disc.album && (artist_name != disc.album.artist_name)) || !omit
+    
+    unless simple
+      out << "#{name}\n"
+    else
+      out << reconstituted_name << "\n"
+    end
+    
+    formatted_track << out
+    
+    unless simple
+      comments = format_comments
+      
+      track_attributes = []
+      track_attributes << ["Artist sort", artist_sort_order || "''"] if (artist_sort_order && artist_sort_order != '' && 
+                                                                         disc && disc.album && artist_sort_order != disc.album.artist_sort_order) || !omit
+      track_attributes << ["Remix", remix || "''"] if (remix && remix != '') || !omit
+      track_attributes << ["Sort name", sort_order || "''"] if (sort_order && sort_order != '') || !omit
+      track_attributes << ["Genre", genre || "''"] if (genre && genre != '' && 
+                                                       disc && disc.album && genre != disc.album.genre) || !omit
+      track_attributes << ["Release date", release_date || "''"] if (release_date &&
+                                                                     disc && disc.album && release_date != disc.album.release_date) || !omit
+      track_attributes << ["Featured", featured_artists.join(', ')] if (featured_artists.size > 0) || !omit
+      track_attributes << ["Image", (image ? image.mime_type : "''")] if image || !omit
+      track_attributes << ["Comments", comments || "''"] if (comments && comments != '') || !omit
+      track_attributes += musicbrainz_attributes(omit)
+
+      formatted_track << StringUtils.justify_attribute_list(track_attributes, 6)
+
+      if !simple && !omit
+        raw_encoders = encoder.join("\n           ")
+        formatted_track << "\nEncoded by #{raw_encoders}\n\n" if raw_encoders && raw_encoders != ''
+      end
+    end
+    
+    formatted_track
+  end
+  
+  def musicbrainz_info_formatted
+    formatted_track = ''
+    
+    out = '    '
+    out << "#{disc.number}." if disc && disc.album && disc.album.discs.compact.size > 1
+    out << "#{sequence}: "
+    out << "#{artist_name} - "
+    out << reconstituted_name << "\n"
+    
+    formatted_track << out
+    formatted_track << StringUtils.justify_attribute_list(musicbrainz_attributes(false))
+  end
+  
   private
+  
+  def musicbrainz_attributes(omit = false)
+    attributes = []
+    
+    attributes << ["Musicbrainz track UUID", unique_id || "''"] if (unique_id && unique_id != '') || !omit
+    attributes << ["Musicbrainz artist UUID", musicbrainz_artist_id || "''"] if (musicbrainz_artist_id && 
+                                                                                 musicbrainz_artist_id != '' &&
+                                                                                 disc && disc.album && musicbrainz_artist_id != disc.album.musicbrainz_album_artist_id) || !omit
+    attributes
+  end
   
   # HEURISTIC: my personal style is to capitalize every remix word *unless*
   # it's one of "mix", "remix", "version",  "edit", "short", "long", "live",

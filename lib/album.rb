@@ -31,6 +31,19 @@ class Album
     end
   end
   
+  def track(disc_number, track_number)
+    if @discs[disc_number]
+      unsorted_tracks = @discs[disc_number].tracks
+      if track_number <= unsorted_tracks.size
+        sorted_tracks = unsorted_tracks.sort do |l,r|
+          l.sequence <=> r.sequence
+        end
+
+        sorted_tracks[track_number - 1]
+      end
+    end
+  end
+  
   def genre=(new_genre)
     tracks.each do |track|
       track.genre = new_genre if track.genre == genre
@@ -158,81 +171,21 @@ class Album
     reconstituted
   end
   
-  def display_formatted(simple = false)
+  def display_formatted(simple = false, omit = true)
     encoders = []
     formatted_album = ''
 
-    formatted_album << "[#{release_date}] " if release_date
-    unless simple
-      formatted_album << "#{artist_name}: #{name}"
-    else
-      formatted_album << "#{artist_name}: #{reconstituted_name}"
-    end
-    formatted_album << " (#{genre})" if genre
-    formatted_album << "\n"
-    unless simple
-      album_attributes = []
-      album_attributes << ["Artist sort", artist_sort_order] if artist_sort_order && artist_sort_order != ''
-      album_attributes << ["Subtitle", subtitle] if subtitle && subtitle != ''
-      album_attributes << ["Album version", version_name] if version_name && version_name != ''
-      album_attributes << ["Mixed by", mixer] if mixer && mixer != ''
-      formatted_album << justify_attribute_list(album_attributes)
-    end
-    formatted_album << "\n"
+    formatted_album << album_header_formatted(simple, omit)
 
     discs.compact.each do |disc|
       formatted_album << "  Disc #{disc.number}:\n" if discs.compact.size > 1
       disc.tracks.sort { |first,second| first.sequence <=> second.sequence }.each do |track|
-        out = '    '
-        out << "#{disc.number}." if discs.compact.size > 1
-        out << "#{track.sequence}: "
-        out << "#{track.artist_name} - " if track.artist_name != artist_name
-
-        unless simple
-          out << "#{track.name}\n"
-        else
-          out << track.reconstituted_name << "\n"
-        end
-
-        formatted_album << out
-
-        unless simple
-          comments =  track.format_comments
-
-          track_attributes = []
-          track_attributes << ["Remix", track.remix] if track.remix && track.remix != ''
-          track_attributes << ["Genre", track.genre] if track.genre && track.genre != genre
-          track_attributes << ["Artist sort", track.artist_sort_order] if track.artist_sort_order && track.artist_sort_order != '' && track.artist_sort_order != artist_sort_order
-          track_attributes << ["Sort", track.sort_order] if track.sort_order && track.sort_order != ''
-          track_attributes << ["Featured", track.featured_artists.join(', ')] if track.featured_artists.size > 0
-          track_attributes << ["Image", track.image.mime_type] if track.image
-          track_attributes << ["Comments", comments] if comments && comments != ''
-          track_attributes << ["Release date", track.release_date] if track.release_date && track.release_date != release_date
-          track_attributes << ["Musicbrainz track UUID", track.unique_id] if track.unique_id && track.unique_id != ''
-          track_attributes << ["Musicbrainz artist UUID", track.musicbrainz_artist_id] if track.musicbrainz_artist_id && 
-                                                                                          track.musicbrainz_artist_id != '' &&
-                                                                                          track.musicbrainz_artist_id != musicbrainz_album_artist_id
-          formatted_album << justify_attribute_list(track_attributes, 6)
-
-          encoders << track.encoder if track.encoder.size > 0
-        end
+        formatted_album << track.display_formatted(simple, omit)
+        encoders << track.encoder if track.encoder.size > 0
       end
     end
 
-    if !simple && ((musicbrainz_album_id && '' != musicbrainz_album_id) ||
-                    (musicbrainz_album_artist_id && '' != musicbrainz_album_artist_id) ||
-                    (musicbrainz_album_type && '' != musicbrainz_album_type) ||
-                    (musicbrainz_album_status && '' != musicbrainz_album_status))
-      formatted_album << "\nMusicbrainz album info:\n"
-      musicbrainz_attributes = []
-      musicbrainz_attributes << ["artist UUID", musicbrainz_album_artist_id] if musicbrainz_album_artist_id && '' != musicbrainz_album_artist_id
-      musicbrainz_attributes << ["album UUID", musicbrainz_album_id] if musicbrainz_album_id && '' != musicbrainz_album_id
-      musicbrainz_attributes << ["release country", musicbrainz_album_release_country] if musicbrainz_album_release_country && '' != musicbrainz_album_release_country
-      musicbrainz_attributes << ["status", musicbrainz_album_status] if musicbrainz_album_status && '' != musicbrainz_album_status
-      musicbrainz_attributes << ["type", musicbrainz_album_type] if musicbrainz_album_type && '' != musicbrainz_album_type
-
-      formatted_album << justify_attribute_list(musicbrainz_attributes)
-    end
+    formatted_album << musicbrainz_info_formatted(simple, omit)
 
     if !simple
       encoders = encoders.flatten.compact.uniq
@@ -243,29 +196,54 @@ class Album
     formatted_album
   end
   
-  def musicbrainz_info_formatted
-    formatted_musicbrainz_info = "Musicbrainz album info:\n"
+  def album_header_formatted(simple = false, omit = true)
+    formatted_album = ''
 
-    musicbrainz_attributes = []
-    musicbrainz_attributes << ["artist UUID", musicbrainz_album_artist_id || "''"]
-    musicbrainz_attributes << ["album UUID", musicbrainz_album_id || "''"]
-    musicbrainz_attributes << ["release country", musicbrainz_album_release_country || "''"]
-    musicbrainz_attributes << ["status", musicbrainz_album_status || "''"]
-    musicbrainz_attributes << ["type", musicbrainz_album_type || "''"]
-
-    formatted_musicbrainz_info << justify_attribute_list(musicbrainz_attributes)
+    formatted_album << "[#{release_date}] " if release_date
+    unless simple
+      formatted_album << "#{artist_name}: #{name}"
+    else
+      formatted_album << "#{artist_name}: #{reconstituted_name}"
+    end
+    formatted_album << " (#{genre})" if genre
+    formatted_album << "\n"
     
-    formatted_musicbrainz_info
+    unless simple
+      album_attributes = []
+      album_attributes << ["Year of release", "''"] if !release_date && !omit
+      album_attributes << ["Genre", "''"] if !genre && !omit
+      album_attributes << ["Album sort", sort_order || "''"] if (sort_order && sort_order != '') || !omit
+      album_attributes << ["Artist sort", artist_sort_order || "''"] if (artist_sort_order && artist_sort_order != '') || !omit
+      album_attributes << ["Subtitle", subtitle || "''"] if (subtitle && subtitle != '') || !omit
+      album_attributes << ["Album version", version_name || "''"] if (version_name && version_name != '') || !omit
+      album_attributes << ["Mixed by", mixer || "''"] if (mixer && mixer != '') || !omit
+
+      formatted_album << StringUtils.justify_attribute_list(album_attributes)
+    end
+
+    formatted_album << "\n"
+    formatted_album
   end
   
-  private
-  
-  def justify_attribute_list(list, offset = 4)
-    out = ''
-    max_width = offset + list.max{|l,r| l[0].length <=> r[0].length}[0].length if list.size > 0
-    list.each do |attribute|
-      out << (' ' * (max_width - attribute[0].length)) << attribute[0] << ': ' << attribute[1] << "\n"
+  def musicbrainz_info_formatted(simple = false, omit = true)
+    formatted_musicbrainz_info = ''
+    
+    if !simple && ((musicbrainz_album_id && '' != musicbrainz_album_id) ||
+                    (musicbrainz_album_artist_id && '' != musicbrainz_album_artist_id) ||
+                    (musicbrainz_album_type && '' != musicbrainz_album_type) ||
+                    (musicbrainz_album_status && '' != musicbrainz_album_status))
+      formatted_musicbrainz_info << "Musicbrainz album info:\n"
+      
+      musicbrainz_attributes = []
+      musicbrainz_attributes << ["artist UUID", musicbrainz_album_artist_id || "''"] if (musicbrainz_album_artist_id && '' != musicbrainz_album_artist_id) || !omit
+      musicbrainz_attributes << ["album UUID", musicbrainz_album_id || "''"] if (musicbrainz_album_id && '' != musicbrainz_album_id) || !omit
+      musicbrainz_attributes << ["release country", musicbrainz_album_release_country || "''"] if (musicbrainz_album_release_country && '' != musicbrainz_album_release_country) || !omit
+      musicbrainz_attributes << ["status", musicbrainz_album_status || "''"] if (musicbrainz_album_status && '' != musicbrainz_album_status) || !omit
+      musicbrainz_attributes << ["type", musicbrainz_album_type || "''"] if (musicbrainz_album_type && '' != musicbrainz_album_type) || !omit
+      
+      formatted_musicbrainz_info << StringUtils.justify_attribute_list(musicbrainz_attributes)
     end
-    out
+    
+    formatted_musicbrainz_info
   end
 end

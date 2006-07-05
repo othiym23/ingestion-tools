@@ -6,6 +6,15 @@ class FLNBorderlessPane < JTTDialog
     JTRectangle.new 0, 0, w, h
   end
   
+  def keypress(key)
+    case key
+    when 'up', 'down', 'left', 'right', 'C-m','C-j'
+      addmessage @parent, :keypress, key
+    else
+      super(key)
+    end
+  end
+
   def paintself(pc)
     delmessages self,:paint
     pc.fillrect 0, 0, w, h, ?\s|@color
