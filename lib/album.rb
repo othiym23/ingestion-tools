@@ -51,6 +51,13 @@ class Album
     @genre = new_genre
   end
   
+  def artist_name=(new_artist_name)
+    tracks.each do |track|
+      track.artist_name = new_artist_name if track.artist_name == artist_name
+    end
+    @artist_name = new_artist_name
+  end
+  
   def release_date=(new_release_date)
     tracks.each do |track|
       track.release_date = new_release_date if track.release_date == release_date
@@ -164,7 +171,7 @@ class Album
   
   def reconstituted_name
     reconstituted = ''
-    reconstituted << @name
+    reconstituted << (@name || '<untitled>')
     reconstituted << ': ' << @subtitle if @subtitle
     reconstituted << ' [' << @version_name << ']' if @version_name
     

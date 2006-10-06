@@ -252,12 +252,12 @@ class AlbumDao
   
   def AlbumDao.choose_randomly
     random_album_record = Euterpe::Dashboard::Album.find_random
-    load_album_from_record(random_album_record)
+    load_album_from_record(random_album_record) if random_album_record
   end
   
   def AlbumDao.choose_most_recent
     recent_album_record = Euterpe::Dashboard::Album.find_most_recently_modified
-    load_album_from_record(recent_album_record)
+    load_album_from_record(recent_album_record) if recent_album_record
   end
   
   def AlbumDao.save_to_db(album)

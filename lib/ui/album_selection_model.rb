@@ -3,6 +3,7 @@ require 'adaptor/euterpe_dashboard_factory'
 
 class AlbumSelectionModel < SelectionModel
   attr_accessor :status
+  attr_writer :album_loader
   
   def initialize
     @narrowing_terms = []
@@ -75,7 +76,7 @@ class AlbumSelectionModel < SelectionModel
   def narrow_albums(albums, search_term)
     if [] == albums
       if search_term && '' != search_term.strip
-        AlbumDao.find_generously(search_term)
+        @album_loader.find_generously(search_term)
       end
     else
       albums.select do |album|
