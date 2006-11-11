@@ -4,3 +4,4 @@ db/development_structure.sql
 log/development.log
 log/test.log
 db/schema.rb
+.DS_Store
