@@ -2,76 +2,260 @@
 script_path = __FILE__
 script_path = File.readlink(script_path) if File.symlink?(script_path)
 
+$KCODE = 'u'
+
 $: << File.join(File.dirname(script_path), '../lib')
 
+require 'find'
 require 'dao/album_dao'
 require 'adaptor/euterpe_dashboard_factory'
 
 PENDING_BASE = '/data/music/holding/pending'
 raise IOError.new("pending media folder #{PENDING_BASE} does not exist!") unless File.exists?(PENDING_BASE)
 
-def find_pending_artist_directories(archive_base)
+class Numeric
+  def kibibyte
+    self * 1024
+  end
+  
+  def mebibyte
+    self * 1.kibibyte ** 2
+  end
+  
+  def gibibyte
+    self * 1.kibibyte ** 3
+  end
+  
+  def tebibyte
+    self * 1.kibibyte ** 4
+  end
+
+  def octet_units(fmt='%.2f')
+    case
+    when self < 1.kibibyte
+      "#{self} bytes"
+    when self < 1.mebibyte
+      "#{fmt % (self.to_f / 1.kibibyte)} KiB"
+    when self < 1.gibibyte
+      "#{fmt % (self.to_f / 1.mebibyte)} MiB"
+    when self < 1.tebibyte
+      "#{fmt % (self.to_f / 1.gibibyte)} GiB"
+    else
+      "#{fmt % (self.to_f / 1.tebibyte)} TiB"
+    end
+  end
+end
+
+def commify(n)
+    n.to_s =~ /([^\.]*)(\..*)?/
+    int, dec = $1.reverse, $2 ? $2 : ""
+
+    while int.gsub!(/(,|\.|^)(\d{3})(\d)/, '\1\2,\3')
+    end
+
+    int.reverse + dec
+end
+
+def wrap_text(text, col = 80)
+  text.gsub(/(.{1,#{col}})( +|$)\n?|(.{#{col}})/, "      \\1\\3\n")
+end
+
+def archive_summary_statistics(archive_location = '/data')
+  df_stats = open("|df -k #{archive_location}").read.split("\n").select{|line| line.match(/\/dev/)}.collect{|line| line.split(/\s+/)}
+
+  archive_used = df_stats[0][2].to_i * 1.kibibyte
+  archive_free = df_stats[0][3].to_i * 1.kibibyte
+  archive_total = df_stats[0][1].to_i * 1.kibibyte
+
+  ingested_mp3s = open("|du -sk #{archive_location}/music/mp3").read.split("\t")[0].to_i * 1.kibibyte
+  pending_mp3s = open("|du -sk #{archive_location}/music/holding/pending").read.split("\t")[0].to_i * 1.kibibyte
+  total_mp3s = open("|du -sk #{archive_location}/music").read.split("\t")[0].to_i * 1.kibibyte
+
+  header_string = <<-HEADER
+  #{total_mp3s.octet_units} of music in the archive: #{ingested_mp3s.octet_units} processed, #{pending_mp3s.octet_units} pending.
+  #{archive_free.octet_units} of free space remains in the archive.
+
+  HEADER
+end
+
+def ingestion_summary_statistics(albums)
+  tracks = albums.inject(0) {|sum,album| sum + album.tracks.size}
+  "  #{commify(tracks)} new tracks added from #{albums.size} albums.\n"
+end
+
+def total_pending_summary_statistics
+  "  #{commify(TrackDao.pending_count)} pending tracks total, on #{commify(AlbumDao.pending_count)} albums.\n"
+end
+
+def non_mp3_summary_statistics(albums)
+  non_media_files = albums.inject(0) {|sum,album| sum + album.non_media_files.size}
+  "  #{commify(non_media_files)} new non-media files added to a total of #{commify(MediaPathDao.pending_non_mp3_count)} cached.\n\n\n"
+end
+
+def create_line(track)
+  processed = wrap_text(track.display_name, 32)
+  processed[2,3] = "%2d:" % track.sequence
+
+  processed
+end
+
+def format_disc(disc) 
+  output = "  disc #{disc.number}:\n"
+  disc.tracks_sorted.each {|track| output << create_line(track)}
+  
+  output
+end
+
+def format_multidisc_album(album)
+  formatted_discs = album.discs.compact.collect {|disc| format_disc(disc)}
+  
+  output = ''
+  (formatted_discs.size / 2 + formatted_discs.size % 2).times do |row|
+    if formatted_discs[row * 2 + 1]
+      first_disc = formatted_discs[row * 2].split(/\n/)
+      second_disc = formatted_discs[row * 2 + 1].split(/\n/)
+      [first_disc.size, second_disc.size].max.times do |line|
+        first_string = (first_disc[line] || '')
+        width = 38 + (first_string.length - first_string.unpack('U*').length)
+
+        output << "%-#{width}s" % first_string + "  " + (second_disc[line] || '') + "\n"
+      end
+    else
+      first_disc = formatted_discs[row * 2].split(/\n/)
+      output << "  disc #{album.discs.compact[row].number}:"
+
+      first_disc.each{|line| output << first_disc[line]}
+    end
+
+    output << "\n"
+  end
+  
+  output
+end
+
+def format_singledisc_album(album)
+  formatted_disc = album.tracks.compact.collect {|track| create_line(track)}
+
+  total_lines = formatted_disc.inject(0) {|size,track| size + track.split(/\n/).size}
+  line_midpoint = total_lines / 2 + total_lines % 2
+
+  if 1 < album.tracks.nitems
+    track_midpoint = 0
+    accumulator = 0
+    formatted_disc.each_with_index do |formatted_track,index|
+      track_height = formatted_track.split(/\n/).size
+      if accumulator + track_height <= line_midpoint
+        accumulator = accumulator + track_height
+      else
+        track_midpoint = index
+        break
+      end
+    end
+    
+    first_column = ''
+    0.upto(track_midpoint - 1) do |track_index|
+      first_column << formatted_disc[track_index]
+    end
+    first_column = first_column.split(/\n/)
+    
+    second_column = ''
+    (track_midpoint).upto(formatted_disc.size - 1) do |track_index|
+      second_column << formatted_disc[track_index]
+    end
+    second_column = second_column.split(/\n/)
+    
+    output = ''
+    [first_column.size, second_column.size].max.times do |line|
+      first_string = (first_column[line] || '')
+      width = 38 + (first_string.length - first_string.unpack('U*').length)
+      output << "%-#{width}s" % (first_string) + "  " + (second_column[line] || '') + "\n"
+    end
+  else
+    output = formatted_disc.compact[0]
+  end
+
+  output << "\n"
+end
+
+def format_album(album, number)
+  output = "#{number + 1}. #{album.display_name}\n\n"
+
+  if album.number_of_discs_loaded > 1
+    output << format_multidisc_album(album)
+  else
+    output << format_singledisc_album(album)
+  end
+  
+  if album.non_media_files.size > 0
+    output << "  non-MP3 files found in album directory:\n"
+    album.non_media_files.each do |path|
+      output << "    #{path}\n"
+    end
+  
+    output << "\n"
+  end
+  
+  output
+end
+
+def new_album_summary(albums)
+  output = "Newly added pending albums (oldest first):\n\n"
+
+  albums.each_with_index do |album,number|
+    output << "   #{number + 1}. #{album.artist_name}: #{album.reconstituted_name}\n"
+  end
+
+  output << "\n\n"
+end
+
+def new_album_details(albums)
+  output = "Newly-added album details:\n\n"
+  albums.each_with_index {|album,number| output << format_album(album, number)}
+  
+  output << "\n\n"
+end
+
+def all_pending_summary
+  output = "All pending albums (newest first):\n\n"
+
+  AlbumDao.all_pending.each_with_index do |album,number|
+    output << "   #{"%5d" % (number + 1)}.  #{album.display_name}\n"
+  end
+
+  output << "\n\n"
+end
+
+def find_artist_directories(archive_base)
   Dir.glob(File.join(archive_base, '*'))
 end
 
-def find_files_in_artist_directory(artist_directory)
-  Dir.glob(File.join(artist_directory, '**', '*')).select{ |entry| File.file?(entry) }
-end
+def find_new_media_files(directory)
+  new_mp3_files = []
 
-def find_pending_other_files(artist_directory)
-  found = find_files_in_artist_directory(artist_directory).reject { |entry| '.mp3' == File.extname(entry) }
-  if found != []
-    found
-  else
-    []
-  end
-end
-
-def find_pending_audio_files(artist_directory)
-  raw_files = find_files_in_artist_directory(artist_directory)
-  unbucketized_mp3s = raw_files.select { |entry| '.mp3' == File.extname(entry) }
-  DiscDao.find_changed_paths(unbucketized_mp3s)
-end
-
-def process_other_files(files)
-  changed_files = []
-
-  files.flatten.compact.each do |entry|
-    MediaPathDao.cache_file(entry) and (changed_files << entry)
-  end
-  
-  changed_files
-end
-
-def cache_pending_media(archive_base)
-  non_media_files = []
-  updated_tracks = []
-
-  find_pending_artist_directories(archive_base).each do |artist_folder|
-    non_media_files += find_pending_other_files(artist_folder)
-    audio_paths = find_pending_audio_files(artist_folder)
-
-    AlbumDao.load_albums_from_paths(audio_paths).each do |found_album|
-      updated_tracks += AlbumDao.cache_album(found_album)
+  Find.find(directory) do |path|
+    if '.mp3' == File.extname(path).downcase && !MediaPathDao.cached?(path)
+      new_mp3_files += [path]
     end
   end
   
-  if updated_tracks.size > 0
-    puts "::AOAIOXXYSZ:: music archive management system, v1: #{updated_tracks.size} tracks added" 
-    puts '  freshly cached:' 
-    updated_tracks.sort{|tl,tr| tl.artist_name + tl.name <=> tr.artist_name + tr.name}.each do |track|
-      puts "    #{track.artist_name} - #{track.name}"
-    end
-  end
+  new_mp3_files
+end
 
-  updated_files = process_other_files(non_media_files)
-  if 0 < updated_files.size
-    puts "\n  updated non-audio files in pending:"
-    
-    updated_files.sort.each do |filename|
-      puts '    ' << filename
+def cache_pending_albums(archive_base)
+  albums = []
+
+  find_artist_directories(archive_base).each do |directory|
+    new_mp3_files = find_new_media_files(directory)
+
+    if new_mp3_files.size > 0
+      AlbumDao.load_albums_from_paths(new_mp3_files).each do |new_album|
+        cached_album = AlbumDao.cache_album(new_album)
+        albums += [new_album] if cached_album && cached_album.size > 0
+      end
     end
   end
+  
+  albums
 end
 
 ActiveRecord::Base.establish_connection(
@@ -81,4 +265,24 @@ ActiveRecord::Base.establish_connection(
   :encoding => "SQL_ASCII"
 )
 
-cache_pending_media(PENDING_BASE)
+report = "::AOAIOXXYSZ:: music archive services, v1\n\n"
+report << archive_summary_statistics
+
+# gather all the uncached files in the holding tank, caching them as we go
+new_albums = cache_pending_albums(PENDING_BASE)
+
+report << ingestion_summary_statistics(new_albums)
+report << total_pending_summary_statistics
+report << non_mp3_summary_statistics(new_albums)
+
+# sort the list of pending albums by modification date
+sorted_albums = new_albums.sort{|l,r| l.modification_date <=> r.modification_date}
+
+# generate the output list
+report << new_album_summary(sorted_albums)
+report << new_album_details(sorted_albums)
+report << all_pending_summary
+
+if new_albums.size > 0
+  puts report
+end

@@ -84,6 +84,7 @@ class AlbumDao
       years = []
       musicbrainz_artist_ids = []
       images = []
+      directories = []
       
       album.discs.compact.each do |disc|
         disc.tracks.each do |track|
@@ -92,6 +93,7 @@ class AlbumDao
           years << track.release_date
           musicbrainz_artist_ids << track.musicbrainz_artist_id
           images << track.image
+          directories << File.dirname(track.path)
         end
       end
       
@@ -160,6 +162,12 @@ class AlbumDao
         end
       end
       
+      # HEURISTIC: an album can potentially be spread across multiple
+      # directories. Choose the modification date of whichever one was
+      # modified most recently.
+      album.modification_date = directories.compact.uniq.map{|path|File.stat(path).mtime}.max
+      album.non_media_files = load_non_media_files_from_paths(directories.compact.uniq)
+      
       album.find_hidden_soundtrack!
       album.set_subtitle!
       album.set_mixer!
@@ -175,6 +183,16 @@ class AlbumDao
   def AlbumDao.reload_album_from_files(album)
     album_paths = album.discs.compact.collect{|disc| disc.tracks.collect{|track| track.path}}
     AlbumDao.load_albums_from_paths(album_paths.flatten).first
+  end
+  
+  def AlbumDao.load_non_media_files_from_paths(paths)
+    non_media_files = []
+    
+    paths.each do |path|
+      non_media_files += Dir.glob(File.join(path, '**', '*')).select{ |entry| File.file?(entry) && '.mp3' != File.extname(entry) }
+    end
+    
+    non_media_files.compact.uniq
   end
   
   def AlbumDao.save(album)

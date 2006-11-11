@@ -48,6 +48,16 @@ class MediaPathDao
       file_record.save or raise IOError.new("Unable to cache path #{filename} because #{file_record.errors}")
     end
   end
+  
+  def MediaPathDao.cached?(filename)
+    file_record = Euterpe::Dashboard::MediaPath.find_by_path(filename)
+    
+    file_record && file_record.file_updated_on.to_s == File.stat(filename).mtime.to_s
+  end
+  
+  def MediaPathDao.pending_non_mp3_count
+    Euterpe::Dashboard::MediaPath.pending_non_mp3_count
+  end
 end
 
 class TrackDao
@@ -90,6 +100,10 @@ class TrackDao
     else
       true
     end
+  end
+  
+  def TrackDao.pending_count
+    Euterpe::Dashboard::Track.pending_count
   end
   
   private
@@ -277,6 +291,10 @@ class AlbumDao
       updated_tracks += DiscDao.cache_disc(disc, album_record)
     end
     
+    album.non_media_files.each do |path|
+      MediaPathDao.cache_file(path)
+    end
+    
     updated_tracks
   end
   
@@ -288,6 +306,14 @@ class AlbumDao
     end
     
     album
+  end
+  
+  def AlbumDao.pending_count
+    Euterpe::Dashboard::Album.pending_count
+  end
+  
+  def AlbumDao.all_pending
+    Euterpe::Dashboard::Album.find(:all, :order => 'id DESC')
   end
   
   private

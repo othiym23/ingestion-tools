@@ -18,6 +18,7 @@ class TrackDao
     @track.remix = @id3.remix_name
     @track.artist_name = @id3.artist_name || @filename.artist_name || @path.artist_name
     @track.sequence = (@id3.sequence || @filename.sequence).to_i
+    @track.modification_date = @path.modification_date
 
     @track.genre = @id3.genre
     @track.comment = @id3.comment

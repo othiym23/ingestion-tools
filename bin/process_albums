@@ -247,7 +247,7 @@ class ProcessingApplication < FLNBorderlessPane
   def paintself(pc)
     super(pc)
     pc.move(4, 2)
-    pc.addstra("::AOAIOXXYSZ:: music archive management system, v1", JTTui.aaxz_basic)
+    pc.addstra("::AOAIOXXYSZ:: music archive services, v1", JTTui.aaxz_basic)
     pc.move(6, 3)
     pc.addstra("e-mail Forrest (ogd@aoaioxxysz.net) if anything weird happens.", JTTui.aaxz_basic)
   end

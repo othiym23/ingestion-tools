@@ -3,10 +3,11 @@ require 'string_utils'
 class Album
   attr_accessor :name, :subtitle, :version_name, :artist_name
   attr_accessor :discs, :number_of_discs
-  attr_accessor :genre, :release_date, :compilation, :mixer
+  attr_accessor :genre, :release_date, :modification_date, :compilation, :mixer
   attr_accessor :musicbrainz_album_id, :musicbrainz_album_artist_id
   attr_accessor :musicbrainz_album_type, :musicbrainz_album_status, :musicbrainz_album_release_country
   attr_accessor :sort_order, :artist_sort_order
+  attr_accessor :non_media_files
   
   def initialize
     @discs = []
@@ -173,13 +174,32 @@ class Album
     reconstituted = ''
     reconstituted << (@name || '<untitled>')
     reconstituted << ': ' << @subtitle if @subtitle
+    reconstituted << ' (mixed by ' << @mixer << ')' if @mixer
     reconstituted << ' [' << @version_name << ']' if @version_name
     
     reconstituted
   end
-  
+
+  def display_name
+    formatted_album = "#{artist_name}: #{reconstituted_name}"
+    formatted_album << " (#{genre})" if genre && '' != genre
+    formatted_album << " [#{release_date}]" if release_date && '' != release_date
+    formatted_album
+  end
+
+  def encoders
+    encoder_strings = []
+
+    discs.compact.each do |disc|
+      disc.tracks.each do |track|
+        encoder_strings << track.encoder if track.encoder && track.encoder.size > 0
+      end
+    end
+    
+    encoder_strings.flatten.compact.uniq
+  end
+
   def display_formatted(simple = false, omit = true)
-    encoders = []
     formatted_album = ''
 
     formatted_album << album_header_formatted(simple, omit)
@@ -188,14 +208,12 @@ class Album
       formatted_album << "  Disc #{disc.number}:\n" if discs.compact.size > 1
       disc.tracks.sort { |first,second| first.sequence <=> second.sequence }.each do |track|
         formatted_album << track.display_formatted(simple, omit)
-        encoders << track.encoder if track.encoder.size > 0
       end
     end
 
     formatted_album << musicbrainz_info_formatted(simple, omit)
 
     if !simple
-      encoders = encoders.flatten.compact.uniq
       raw_encoder = encoders.join("\n           ")
       formatted_album << "\nEncoded by #{raw_encoder}\n\n" if raw_encoder && raw_encoder != ''
     end

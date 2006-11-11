@@ -170,6 +170,13 @@ class AlbumTest < IngestionCase
     assert !track_list.detect { |track| '324' != track.artist_name }
   end
   
+  def test_encoder_list
+    album = load_albums("Razor X Productions/*/*.mp3").first
+    encoders = ['Exact Audio Copy (secure mode)', 'lame 3.96.1 --alt-preset standard', '::AOAIOXXYSZ:: encoding services, v1']
+    assert_equal encoders, album.encoders, 'encoder lists should match'
+    assert_equal 0, album.discs.compact.collect{|disc| disc.tracks.compact }.flatten.reject{ |track| track.encoder == encoders }.size
+  end
+
   def test_album_display
     sample_output =<<END
 [2006] Razor X Productions: Killing Sound (Dancehall)
@@ -209,7 +216,7 @@ class AlbumTest < IngestionCase
 
 Encoded by Exact Audio Copy (secure mode)
            lame 3.96.1 --alt-preset standard
-           ::AOAIOXXYSZ:: encoding tools, v1
+           ::AOAIOXXYSZ:: encoding services, v1
 
 END
     
@@ -322,6 +329,18 @@ END
     albums = load_albums("Various Artists/The Celluloid Years- 12's And MORE...*/*.mp3")
     album = albums.first
     assert_equal sample_output, album.display_formatted(true)
+  end
+
+  def test_track_sorting
+    albums = load_albums("Various Artists/The Celluloid Years- 12's And MORE...*/*.mp3")
+    album = albums.first
+    
+    assert_equal 2, album.discs.nitems
+    assert_equal 9, album.discs[1].tracks_sorted.nitems
+    assert_equal 12, album.discs[2].tracks_sorted.nitems
+    
+    assert_equal 'Manu Dibango', album.discs[2].tracks_sorted[4].artist_name
+    assert_equal 'Get Movin', album.discs[1].tracks_sorted[4].name
   end
 
   def test_capitalization_of_titles

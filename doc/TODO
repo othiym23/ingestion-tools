@@ -1,4 +1,5 @@
 management console:
+* add ability to edit track / disc numbers
 * create validation framework for data entry
 * join multiple discs into a single album
 * move values from encoder string to comments for all tracks (make encoder

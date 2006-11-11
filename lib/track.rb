@@ -8,7 +8,7 @@ class Track
   attr_accessor :remix, :featured_artists, :release_date
   attr_accessor :unique_id, :musicbrainz_artist_id
   attr_accessor :sort_order, :artist_sort_order
-  attr_accessor :image
+  attr_accessor :image, :modification_date
   
   def initialize(path)
     @path = path
@@ -123,7 +123,7 @@ class Track
   end
   
   def canonicalize_encoders!
-    encoder_version_string = "::AOAIOXXYSZ:: encoding tools, v1"
+    encoder_version_string = "::AOAIOXXYSZ:: encoding services, v1"
      if @encoder
        encoder_list = @encoder.compact.uniq.flatten
        
@@ -153,7 +153,7 @@ class Track
   def reconstituted_name
     reconstituted = ''
     reconstituted << @name
-    reconstituted << " (feat. #{featured_artists.join(', ')})" if featured_artists.size > 0
+    reconstituted << " (feat. #{featured_artists.join(', ')})" if featured_artists && featured_artists.size > 0
     reconstituted << " [#{remix}]" if remix && remix != ''
     
     reconstituted
@@ -187,6 +187,12 @@ class Track
     @featured_artists.collect! { |artist| StringUtils.mixed_case(artist) }
   end
   
+  def display_name
+    out = ''
+    out = "#{artist_name} - " if (disc && disc.album && (artist_name != disc.album.artist_name))
+    out << reconstituted_name
+  end
+
   def display_formatted(simple = false, omit = true)
     formatted_track = ''
     
@@ -216,7 +222,7 @@ class Track
       track_attributes << ["Release date", release_date || "''"] if (release_date &&
                                                                      disc && disc.album && release_date != disc.album.release_date) || !omit
       track_attributes << ["Featured", featured_artists.join(', ')] if (featured_artists.size > 0) || !omit
-      track_attributes << ["Image", (image ? image.mime_type : "''")] if image || !omit
+      track_attributes << ["Image", (image ? 'image' : "''")] if image || !omit
       track_attributes << ["Comments", comments || "''"] if (comments && comments != '') || !omit
       track_attributes += musicbrainz_attributes(omit)
 

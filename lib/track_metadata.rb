@@ -1,14 +1,12 @@
 $: << File.expand_path(File.join(File.dirname(__FILE__), '../../mp3info/lib'))
 
-require 'iconv'
-
 require 'mp3info'
 require 'adaptor/mp3info_factory'
 
 # set of classes meant to encapsulate metainformation in data transfer
 # objects about digitally-encoded tracks
 class TrackMetadata
-  attr_accessor :artist_name, :album_name, :track_name, :full_path
+  attr_accessor :disc_number, :artist_name, :album_name, :track_name, :full_path
   
   def self.load_from_path(full_path)
     track_metadata = TrackMetadata.new
@@ -16,15 +14,27 @@ class TrackMetadata
     track_metadata
   end
   
+  def split_disc_number_from_title!
+    if @album_name
+      if disc_number_candidate = @album_name.match(/^(.+) [\[\(]?[Dd]isc ([0-9]+)[\]\)]?$/)
+        @album_name = disc_number_candidate[1]
+        @disc_number = disc_number_candidate[2].to_i unless @disc_number
+      elsif disc_number_candidate = @album_name.match(/^(.+) [\[\(]?[Cc][Dd]([0-9]+)[\]\)]?$/)
+        @album_name = disc_number_candidate[1]
+        @disc_number = disc_number_candidate[2].to_i unless @disc_number
+      end
+    end
+  end
+  
   protected
   
   def strip_diacritics(string)
-    Iconv.iconv('US-ASCII//TRANSLIT', 'UTF-8', string)[0]
+    string.utf8_trans_unaccent
   end
 end
 
 class TrackPathMetadata < TrackMetadata
-  attr_accessor :album_artist_name, :disc_number
+  attr_accessor :album_artist_name, :modification_date
   
   def self.load_from_path(full_path)
     track_metadata = TrackPathMetadata.new
@@ -33,6 +43,7 @@ class TrackPathMetadata < TrackMetadata
     track_metadata.artist_name = track_metadata.album_artist_name
     track_metadata.album_name = path_elements[-1]
     track_metadata.split_disc_number_from_title!
+    track_metadata.modification_date = File.stat(full_path).mtime if File.exists?(full_path)
     
     track_metadata
   end
@@ -64,14 +75,6 @@ class TrackPathMetadata < TrackMetadata
   
   def compilation?
     'Various Artists' == @album_artist_name
-  end
-  
-  def split_disc_number_from_title!
-    disc_number_candidate = @album_name.match(/^(.+) \[?disc ([0-9]+)\]?$/)
-    if disc_number_candidate
-      @album_name = disc_number_candidate[1]
-      @disc_number = disc_number_candidate[2].to_i
-    end
   end
   
   def ==(object)
@@ -121,7 +124,7 @@ class TrackFilenameMetadata < TrackMetadata
 end
 
 class TrackId3Metadata < TrackMetadata
-  attr_accessor :disc_number, :max_disc_number, :sequence, :max_sequence
+  attr_accessor :max_disc_number, :sequence, :max_sequence
   attr_accessor :genre, :release_date, :comment, :encoder, :compilation
   attr_accessor :remix_name, :remixer, :featured_artists
   attr_accessor :album_image, :album_artist_name, :album_subtitle, :album_version
@@ -323,13 +326,5 @@ class TrackId3Metadata < TrackMetadata
     filename.track_name = track_name
     
     File.join(path.canonical_path, filename.canonical_filename)
-  end
-
-  def split_disc_number_from_title!
-    disc_number_candidate = @album_name.match(/^(.+) [\(\[]?disc ([0-9]+)[\)\]]?$/) if @album_name
-    if disc_number_candidate
-      @album_name = disc_number_candidate[1]
-      @disc_number = disc_number_candidate[2].to_i unless @disc_number
-    end
   end
 end
