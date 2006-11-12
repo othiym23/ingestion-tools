@@ -98,22 +98,22 @@ class AlbumDao
       end
       
       # HEURISTIC: promote track-level artists to album level, finding any secret
-      # compilations to boot
-      #
-      # TODO: correctly handle split albums with "Artist 1 / Artist 2" titles
-      if album.compilation
-        if 1 == artists.compact.uniq.size
-          album.artist_name = artists.first
-          album.compilation = false
-        else
-          album.artist_name = 'Various Artists'
-        end
+      # compilations and split albums to boot
+      if 1 == artists.compact.uniq.size
+        album.artist_name = artists.compact.first
+        album.compilation = false
       else
-        if 1 < artists.compact.uniq.size
-          album.artist_name = "Various Artists"
+        actual_compilation = false
+        artists.compact.uniq.each do |artist|
+          actual_compilation = true if !album.name.match(/#{artist}/)
+        end
+        
+        if actual_compilation
+          album.artist_name = 'Various Artists'
           album.compilation = true
         else
-          album.artist_name = artists.first
+          album.artist_name = album.name
+          album.compilation = false
         end
       end
       
