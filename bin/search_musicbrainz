@@ -1,0 +1,47 @@
+#!/usr/bin/env ruby
+#
+#  Created by Forrest L Norvell on 2006-11-13.
+#  Copyright (c) 2006. All rights reserved.
+script_path = __FILE__
+script_path = File.readlink(script_path) if File.symlink?(script_path)
+
+$KCODE = 'u'
+
+$: << File.join(File.dirname(script_path), '../lib')
+
+require 'musicbrainz_lite'
+
+query_artist = ARGV[0]
+query_album = ARGV[1]
+
+puts "Querying MusicBrainz for #{query_artist} - #{query_album}"
+
+albums = []
+if query_album.nil? || query_album == ''
+  albums = MusicBrainz::Artist.search(query_artist)
+else
+  albums = MusicBrainz::Album.search(query_artist, query_album, true)
+  if albums.size == 0
+    albums = MusicBrainz::Album.search(query_artist, query_album, false)
+  end
+end
+
+albums.each do |album|
+  puts "#{album.artist.name} {#{album.artist.id}} - #{album.name} {#{album.id}} (#{album.tracks.size} tracks)"
+  album.tracks.each_with_index do |track,index|
+    line = "  #{index + 1}. "
+    line << "#{track.artist.name} - " if track.artist.name != album.artist.name
+    line << track.name
+    line << " {#{track.id}}"
+
+    puts line
+  end
+
+  puts
+end
+
+puts "Dumping artist cache:"
+
+MusicBrainz::Base.fetcher.artist_cache.values.sort{|l,r| l.elements["mm:sortName"].text <=> r.elements["mm:sortName"].text}.each do |artist|
+  puts "a: #{artist.elements["dc:title"].text} {#{artist.attributes['rdf:about'].match(/http:\/\/musicbrainz.org\/mm-2\.1\/artist\/(.+)/)[1]}}"
+end
