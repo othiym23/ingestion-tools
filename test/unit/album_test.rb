@@ -234,7 +234,7 @@ END
     1.2: WWW (feat. Mexican)
     1.3: Slew Dem (feat. Wayne Lonesome)
     1.4: Child Molester (feat. Mexican)
-    1.5: Boom Boom Claat (feat. Cutty Ranks, The Bug)
+    1.5: Boom Boom Claat (feat. Cutty Ranks & The Bug)
     1.6: Imitator (feat. Daddy Freddy)
     1.7: War Start (feat. Bongo Chilli)
     1.8: Yard Man (feat. El Feco)
@@ -320,7 +320,7 @@ END
     2.6: Grandmixer D. ST & Jalal - Mean Machine [original 12" version]
     2.7: Grandmixer D. ST - Home Of Hip Hop [original 12" version]
     2.8: Grandmixer D. ST - Home Of Hip Hop [original 12" dub version]
-    2.9: Time Zone - World Destruction (feat. Afrika Bambaaataa, John Lydon) [original 12" version - Bill Laswell remix]
+    2.9: Time Zone - World Destruction (feat. Afrika Bambaaataa & John Lydon) [original 12" version - Bill Laswell remix]
     2.10: Manu Dibango - Abele Dance [original 12" version]
     2.11: Grandmixer D. ST - Crazy Cuts [original 12" long version]
     2.12: Grandmixer D. ST - Crazy Cuts [original 12" dub version]

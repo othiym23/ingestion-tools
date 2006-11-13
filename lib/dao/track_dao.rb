@@ -67,6 +67,8 @@ class TrackDao
     id3.full_path = new_path
 
     id3.save
+    
+    new_path
   end
   
   def album_name

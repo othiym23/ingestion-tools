@@ -203,8 +203,15 @@ class AlbumDao
   
   def archive_album(album)
     if !already_in_archive?(album)
+      album_directories = []
       album.tracks.each do |track|
-        TrackDao.archive_mp3_from_track(@archive_root, track)
+        album_directories << File.dirname(TrackDao.archive_mp3_from_track(@archive_root, track))
+      end
+      
+      non_mp3_dest_folder = album_directories.compact.uniq.sort.first
+      
+      album.non_media_files.each do |non_media_file_path|
+        archive_non_audio_file(non_mp3_dest_folder, non_media_file_path)
       end
       
       remove_empty_paths(album.tracks.collect{|track| track.path})
@@ -225,6 +232,11 @@ class AlbumDao
       PathUtils.album_ingested?(@archive_root, canonical_path) ||
       PathUtils.album_ingested?(@archive_root, dedisked_path)
     end
+  end
+
+  def archive_non_audio_file(dest_dir, source_path)
+    new_path = File.join(dest_dir, File.filename(source_path))
+    PathUtils.safe_move(source_path, new_path)
   end
 
   def remove_empty_paths(file_paths)

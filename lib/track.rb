@@ -153,10 +153,28 @@ class Track
   def reconstituted_name
     reconstituted = ''
     reconstituted << @name
-    reconstituted << " (feat. #{featured_artists.join(', ')})" if featured_artists && featured_artists.size > 0
+    reconstituted << reconstituted_featured_artists if reconstituted_featured_artists
     reconstituted << " [#{remix}]" if remix && remix != ''
     
     reconstituted
+  end
+  
+  def reconstituted_featured_artists
+    if featured_artists && featured_artists.size > 0
+      curried_artists = featured_artists.compact.uniq
+      artist_string = ''
+      
+      if curried_artists.size > 0
+        last_artist = curried_artists.pop
+        joined_artists = curried_artists.join(', ')
+        artist_string << "#{joined_artists} & " if joined_artists && "" != joined_artists
+        artist_string << "#{last_artist}"
+      end
+      
+      " (feat. #{artist_string})"
+    else
+      nil
+    end
   end
   
   # HEURISTIC: Exact Audio Copy likes to add a totally gratuitous comment
@@ -221,7 +239,7 @@ class Track
                                                        disc && disc.album && genre != disc.album.genre) || !omit
       track_attributes << ["Release date", release_date || "''"] if (release_date &&
                                                                      disc && disc.album && release_date != disc.album.release_date) || !omit
-      track_attributes << ["Featured", featured_artists.join(', ')] if (featured_artists.size > 0) || !omit
+      track_attributes << ["Featured", featured_artists.join(', ')] if featured_artists && featured_artists.size > 0 || !omit
       track_attributes << ["Image", (image ? 'image' : "''")] if image || !omit
       track_attributes << ["Comments", comments || "''"] if (comments && comments != '') || !omit
       track_attributes += musicbrainz_attributes(omit)

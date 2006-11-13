@@ -599,7 +599,7 @@ class EditState < ControllerState
   end
   
   def prompt_string
-    'edit [a]lbum or [t]rack (get [Y]AML dump) [b]ack: '
+    'edit [a]lbum or [t]rack, [S]ave album to archive (get [Y]AML dump) [b]ack: '
   end
   
   def enter
@@ -634,6 +634,15 @@ class EditState < ControllerState
     when 'Y'
       @status.message = ''
       @context.change_state(AlbumYAMLState)
+    when 'S'
+      @status.message = "Validating '#{@model.selected.reconstituted_name}' to archive"
+
+      validation_message = validate_album(@model.selected)
+      if validation_message
+        @status.message = "Unable to archive '#{@model.selected.reconstituted_name}'! #{validation_message}"
+      else
+        # TODO: make with the archiving!
+      end
     when 'b', 'Q', 'q'
       @status.message = "Done with '#{@model.selected.reconstituted_name}'!"
       @model.selected = nil
@@ -671,6 +680,16 @@ class EditState < ControllerState
         @context.update
       end
     end
+  end
+  
+  def validate_album(album)
+    validation_message = nil
+    album_genre = Netjuke::GenreDao.find_genre(album.genre)
+    unless album_genre
+      validation_message = "'#{album.genre}' isn't one of the current genres in Netjuke."
+    end
+    
+    validation_message
   end
 end
 
@@ -768,7 +787,7 @@ class StartState < ControllerState
   
   def dispatch(key)
     case key
-    when 'f'
+    when 'f', '/'
       get_albums
     when 'r'
       random = @context.album_loader.choose_randomly
