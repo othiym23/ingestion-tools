@@ -1,5 +1,3 @@
-#$: << File.expand_path(File.join(File.dirname(__FILE__), '../../../../rails/netjuke-tlg'))
-
 require File.expand_path(File.join(File.dirname(__FILE__), '../../../../rails/netjuke-tlg/config/boot'))
 
 require 'base'

@@ -38,6 +38,7 @@ class TrackDao
     @track.set_sort_order!
     @track.canonicalize_encoders!
     @track.canonicalize_comments!
+    @track.strip_itunes_sound_check_comments!
   end
   
   def TrackDao.save(track)
@@ -51,7 +52,7 @@ class TrackDao
     id3 = populate_id3_metadata_from_dao(track_dao)
     
     new_path = File.join(archive_root, id3.canonical_full_path)
-    PathUtils.safe_move(source_path, new_path)
+    PathUtils.safe_copy(source_path, new_path)
     id3.full_path = new_path
 
     id3.save
@@ -63,7 +64,7 @@ class TrackDao
     id3 = TrackId3Metadata.load_from_track(track)
     
     new_path = File.join(archive_root, id3.canonical_full_path)
-    PathUtils.safe_move(source_path, new_path)
+    PathUtils.safe_copy(source_path, new_path)
     id3.full_path = new_path
 
     id3.save

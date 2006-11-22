@@ -221,7 +221,8 @@ class TrackId3Metadata < TrackMetadata
 
       album = disc.album
       if album
-        id3.album_name = album.name
+        id3.album_name = album.reconstituted_name
+        id3.album_artist_name = album.artist_name
         id3.album_subtitle = album.subtitle
         id3.album_version = album.version_name
         id3.album_sort_order = album.sort_order
@@ -257,7 +258,7 @@ class TrackId3Metadata < TrackMetadata
       id3v2.album_version = album_version if album_version && '' != album_version
       id3v2.artist_name = artist_name if artist_name && '' != artist_name
       id3v2.featured_artists = featured_artists if featured_artists && featured_artists.size > 0
-      id3v2.album_image = album_image if album_image && album_image.value.size > 0
+      id3v2.album_image = album_image if album_image
 
       id3v2.disc_set = "#{disc_number}/#{max_disc_number}" if disc_number && max_disc_number
       id3v2.sequence_info = "%02d" % sequence if sequence && '' != sequence

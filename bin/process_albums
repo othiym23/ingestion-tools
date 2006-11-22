@@ -10,6 +10,7 @@ require 'logger'
 
 require 'adaptor/euterpe_dashboard_factory'
 require 'adaptor/netjuke_factory'
+require 'adaptor/musicbrainz_factory'
 
 require 'ui/fln_widgets'
 require 'ui/ingestion_widgets'
@@ -93,7 +94,7 @@ module Euterpe
         :adapter  => "mysql",
         :username => "ogd",
         :database => "netjuke",
-        :password => "set_password_here"
+        :password => "WVeW5Y6K"
       )
     end
   end
@@ -219,6 +220,9 @@ class ProcessingApplication < FLNBorderlessPane
           @album_model.selected = album
           self.change_state(EditState)
         end
+      when 'GenericList'
+        panel = GenericList.new(self, 'GenericList',
+                              2, 1, self.w - 4, self.h - 5)
       when 'FLNSlidingTextReader'
         panel = FLNSlidingTextReader.new(self, 'Information window',
                                          2, 1, self.w - 4, self.h - 5)

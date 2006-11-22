@@ -58,6 +58,11 @@ class MediaPathDao
   def MediaPathDao.pending_non_mp3_count
     Euterpe::Dashboard::MediaPath.pending_non_mp3_count
   end
+  
+  def MediaPathDao.purge_cached_path(path)
+    path_record = Euterpe::Dashboard::MediaPath.find_by_path(path)
+    path_record.destroy or raise IOError.new("Unable to purge path record because #{path_record.errors}")
+  end
 end
 
 class TrackDao
@@ -300,6 +305,7 @@ class AlbumDao
   
   def AlbumDao.load_album_from_record(album_record)
     album = load_from_record(album_record)
+    album.cached_album = album_record
     
     album_record.discs.each do |disc_record|
       album.discs[disc_record.number] = DiscDao.load_disc_from_record(disc_record, album)
@@ -308,12 +314,36 @@ class AlbumDao
     album
   end
   
+  def AlbumDao.merge_cached_albums(master, subject)
+    # TODO: jeez, less cheesy please!
+    target_disc = master.discs.first
+
+    subject.discs.each do |disc|
+      disc.tracks.each do |track|
+        target_disc.tracks << track
+      end
+    end
+    subject.destroy
+    
+    load_album_from_record(master)
+  end
+  
   def AlbumDao.pending_count
     Euterpe::Dashboard::Album.pending_count
   end
   
   def AlbumDao.all_pending
     Euterpe::Dashboard::Album.find(:all, :order => 'id DESC')
+  end
+  
+  def AlbumDao.purge_cached_album(album)
+    media_paths = album.discs.compact.collect{|disc| disc.tracks.collect{|track| track.media_path}}
+
+    album.destroy
+
+    media_paths.flatten.each do |media_path|
+      media_path.destroy
+    end
   end
   
   private

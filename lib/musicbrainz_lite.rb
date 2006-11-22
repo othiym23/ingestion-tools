@@ -17,6 +17,7 @@ module MusicBrainz
       url = URI.parse( url_string )
 
       Net::HTTP.start( url.host, url.port ) do |http|
+        http.read_timeout = 360
         http.post( url.path, query_string )
       end
     end
@@ -25,6 +26,7 @@ module MusicBrainz
       url = URI.parse( url_string )
 
       Net::HTTP.start( url.host, url.port ) do |http|
+        http.read_timeout = 360
         http.get( url.path )
       end
     end
@@ -82,10 +84,10 @@ module MusicBrainz
     def Artist.search(artist_string)
       result_root = find(artist_string, 5)
 
-      puts "Parsing results from server with size #{result_root.to_s.size}"
+      puts "Parsing results from server with size #{result_root.to_s.size}" if $DEBUG
 
       album_references = result_root.elements.to_a('//mm:Artist/mm:albumList/rdf:Bag/rdf:li').collect { |album_reference| album_reference.attributes['rdf:resource'] }
-      puts "#{album_references.size} reference(s) to albums."
+      puts "#{album_references.size} reference(s) to albums." if $DEBUG
       
       albums = []
       album_references.each do |reference|
@@ -108,6 +110,25 @@ module MusicBrainz
       @rdf.elements["dc:title"].text
     end
     
+    def sort_name
+      @rdf.elements["mm:sortName"].text
+    end
+    
+    def type
+      raw_type = @rdf.elements["mm:artistType"].attributes['rdf:resource'] if @rdf.elements["mm:artistType"]
+
+      if raw_type
+        case raw_type.match(/http:\/\/musicbrainz\.org\/mm\/mm-2\.1#(.+)/)[1]
+        when 'TypeGroup'
+          'group'
+        when 'TypePerson'
+          'person'
+        end
+      else
+        nil
+      end
+    end
+    
     private
     
     def Artist.find(artist_name, depth = 1)
@@ -126,6 +147,7 @@ module MusicBrainz
     def initialize(reference)
       @reference = reference
       @rdf = self.class.fetcher.track_from_rdf(@reference)
+      @trms = []
     end
     
     def id
@@ -143,6 +165,27 @@ module MusicBrainz
     def artist
       Artist.new(artist_reference)
     end
+    
+    def duration
+      @rdf.elements['mm:duration'].text if @rdf.elements['mm:duration']
+    end
+
+    def trms
+      if @trms.size == 0
+        trm_references.each do |reference|
+          @trms << MusicBrainz::TRM.new(reference)
+        end
+      end
+      @tracks
+    end
+    
+    private
+    
+    def trm_references
+      @rdf.elements.to_a("mm:trmidList/rdf:Bag/rdf:li").collect do |track_reference|
+        track_reference.attributes['rdf:resource']
+      end
+    end
   end
   
   class Album < Base
@@ -150,10 +193,10 @@ module MusicBrainz
     
     def Album.search(artist_string, album_string, exact = false)
       result_root = find(artist_string, album_string, 3)
-      puts "Parsing results from server with size #{result_root.to_s.size}"
+      puts "Parsing results from server with size #{result_root.to_s.size}" if $DEBUG
 
       album_references = result_root.elements.to_a('//mq:Result/mm:albumList/rdf:Bag/rdf:li').collect { |album_reference| album_reference.attributes['rdf:resource'] }
-      puts "#{album_references.size} reference(s) to albums."
+      puts "#{album_references.size} reference(s) to albums." if $DEBUG
       
       albums = []
       album_references.each do |reference|
@@ -185,10 +228,6 @@ module MusicBrainz
       @rdf.elements["dc:title"].text
     end
     
-    def artist_reference
-      @rdf.elements['dc:creator'].attributes['rdf:resource']
-    end
-    
     def artist
       Artist.new(artist_reference)
     end
@@ -202,7 +241,82 @@ module MusicBrainz
       @tracks
     end
     
+    def type
+      raw_type = @rdf.elements["mm:releaseType"].attributes['rdf:resource'] if @rdf.elements["mm:releaseType"]
+
+      if raw_type && raw_type.match(/http:\/\/musicbrainz\.org\/mm\/mm-2\.1#(.+)/)
+        case raw_type.match(/http:\/\/musicbrainz\.org\/mm\/mm-2\.1#(.+)/)[1]
+        when 'TypeAlbum'
+          'album'
+        when 'TypeSingle'
+          'single'
+        when 'TypeEP'
+          'EP'
+        when 'TypeCompilation'
+          'compilation'
+        when 'TypeSoundtrack'
+          'soundtrack'
+        when 'TypeSpokenword'
+          'spokenword'
+        when 'TypeInterview'
+          'interview'
+        when 'TypeAudiobook'
+          'audiobook'
+        when 'TypeLive'
+          'live'
+        when 'TypeRemix'
+          'remix'
+        when 'TypeOther'
+          'other'
+        end
+      else
+        nil
+      end
+    end
+    
+    def status
+      raw_type = @rdf.elements["mm:releaseStatus"].attributes['rdf:resource'] if @rdf.elements["mm:releaseStatus"]
+
+      if raw_type && raw_type.match(/http:\/\/musicbrainz\.org\/mm\/mm-2\.1#(.+)/)
+        case raw_type.match(/http:\/\/musicbrainz\.org\/mm\/mm-2\.1#(.+)/)[1]
+        when 'StatusOfficial'
+          'official'
+        when 'StatusPromotion'
+          'promotion'
+        when 'StatusBootleg'
+          'bootleg'
+        end
+      else
+        nil
+      end
+    end
+    
+    def asin
+      @rdf.elements["az:Asin"].text if @rdf.elements["az:Asin"]
+    end
+    
+    def release_dates
+      raw_dates = @rdf.elements["mm:releaseDateList"]
+      
+      if raw_dates
+        date_pairs = []
+        raw_dates.elements.each('rdf:Seq/rdf:li/mm:ReleaseDate') do |raw_date_pair|
+          date_pair = {}
+          date_pair['country'] = raw_date_pair.elements['mm:country'].text
+          date_pair['date'] = raw_date_pair.elements['dc:date'].text
+
+          date_pairs << date_pair
+        end
+        
+        date_pairs
+      end
+    end
+    
     private
+    
+    def artist_reference
+      @rdf.elements['dc:creator'].attributes['rdf:resource']
+    end
     
     def Album.find(artist_name, album_name, depth = 1)
       query = create_query_template "FindAlbum"

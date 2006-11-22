@@ -376,6 +376,72 @@ class AlbumYAMLState < ControllerState
   end
 end
 
+class EncoderListEditState < ControllerState
+  def EncoderListEditState.state_name
+    'Edit encoder list'
+  end
+  
+  def prompt_string
+    '[a]dd [d]elete [b]ack: '
+  end
+  
+  def enter
+    unless @model.selected
+      raise IllegalStateError.new("#{self.class.name} requires an album be selected")
+    end
+    
+    @encoder_pane = @context.get_panel(FLNSlidingTextReader)
+    @context.set_active
+  end
+  
+  def exit
+    @encoder_pane.visible = false
+  end
+  
+  def update
+    @encoder_pane.list = @model.selected.encoders
+    @encoder_pane.update
+    @encoder_pane.visible = true unless @encoder_pane.visible
+  end
+  
+  def dispatch(key)
+    case key
+    when 'a'
+      add_encoder
+    when 'd'
+      @status.message = ''
+      delete_encoder
+    when 'b', 'Q', 'q'
+      @context.change_state(EditState)
+    else
+      @yaml_pane.keypress(key)
+    end
+  end
+  
+  private
+  
+  def add_encoder
+    @status.message = ''
+    @control.prompt_with_callback('Edit encoder list', 'New encoder: ', '::AOAIOXXYSZ:: music archive services, v1') do |input|
+      @model.selected.tracks.each {|track| track.encoder ||= []; track.encoder += [input] }
+      @context.update
+    end
+  end
+  
+  def delete_encoder
+    @status.message = ''
+    @control.prompt_with_callback('Edit encoder list', '# to delete: ', 1.to_s) do |input|
+      encoder_number = input.to_i
+      encoder_list = @model.selected.encoders
+      if encoder_number > 0 && encoder_number <= encoder_list.size
+        deleted_string = encoder_list[encoder_number - 1]
+        @model.selected.tracks.each {|track| track.encoder -= [deleted_string] if track.encoder }
+      end
+      @context.update
+    end
+  end
+end
+
 class TrackYAMLState < AlbumYAMLState
   def enter(track)
     unless track
@@ -413,7 +479,7 @@ class TrackMetadataEditState < ControllerState
   end
   
   def prompt_string
-    '[n]ame [s]ort [a]rtist ([S]ort) [r]emix [g]enre [y]ear [f]eat. [c]omment [M]usicBrainz ([Y]AML) [b]ack: '
+    '[#] [n]ame [s]ort [a]rtist ([S]ort) [r]emix [g]enre [y]ear [f]eat. [c]omment [M]usicBrainz ([Y]AML) [b]ack: '
   end
   
   def enter(track)
@@ -439,6 +505,8 @@ class TrackMetadataEditState < ControllerState
   
   def dispatch(key)
     case key
+    when '#'
+      get_track_sequence
     when 'n'
       get_track_name
     when 's'
@@ -456,7 +524,7 @@ class TrackMetadataEditState < ControllerState
     when 'c'
       get_track_comment
     when 'f'
-      @status.message = 'TODO: featured artist editing mode'
+      @context.change_state(FeaturedEditState, @selected_track)
     when 'b', 'Q', 'q'
       @status.message = "Done with track '#{@selected_track.name}'!"
       @context.change_state(EditState)
@@ -469,9 +537,17 @@ class TrackMetadataEditState < ControllerState
     end
   end
 
+  def get_track_sequence
+    @status.message = ''
+    @control.prompt_with_callback('Edit track metadata', 'sequence #: ', @selected_track.sequence.to_s) do |input|
+      @selected_track.sequence = ('' == input ? 0 : input.to_i)
+      @context.update
+    end
+  end
+
   def get_track_name
     @status.message = ''
-    @control.prompt_with_callback('Edit track metadata', 'album name: ', @selected_track.name) do |input|
+    @control.prompt_with_callback('Edit track metadata', 'name: ', @selected_track.name) do |input|
       @selected_track.name = ('' == input ? nil : input)
       @context.update
     end
@@ -487,7 +563,7 @@ class TrackMetadataEditState < ControllerState
 
   def get_track_release_year
     @status.message = ''
-    @control.prompt_with_callback('Edit track metadata', 'artist sort name: ', @selected_track.release_date) do |input|
+    @control.prompt_with_callback('Edit track metadata', 'artist sort name: ', @selected_track.release_date.to_s) do |input|
       @selected_track.release_date = ('' == input ? nil : input)
       @context.update
     end
@@ -593,13 +669,90 @@ class TrackMusicBrainzEditState < ControllerState
   end
 end
 
+class FeaturedEditState < ControllerState
+  def FeaturedEditState.state_name
+    'Edit track featured artists'
+  end
+  
+  def prompt_string
+    '[a]dd [d]elete [e]dit featured artists [b]ack: '
+  end
+  
+  def enter(track)
+    unless track
+      raise IllegalStateError.new("#{self.class.name} requires a track to be selected")
+    end
+    
+    @selected_track = track
+    
+    @featured_pane = @context.get_panel(GenericList)
+    @context.set_active
+  end
+  
+  def exit
+    @featured_pane.visible = false if @featured_pane
+  end
+  
+  def update
+    @featured_pane.content_list = @selected_track.featured_artists
+    @featured_pane.update
+    @featured_pane.visible = true unless @featured_pane.visible
+  end
+  
+  def dispatch(key)
+    case key
+    when 'a'
+      add_item
+    when 'd'
+      @status.message = "Deleted #{current_item}"
+      @selected_track.featured_artists -= [current_item]
+      update
+    when 'e', 'C-j', 'C-m'
+      edit_item
+    when 'b', 'Q', 'q'
+      @status.message = 'back to finding albums!'
+      @context.change_state(TrackMetadataEditState, @selected_track)
+    when ('0'..'9')
+      get_line_jump(key)
+    else
+      @featured_pane.keypress(key)
+    end
+  end
+  
+  def current_item
+    @featured_pane.current_item
+  end
+  
+  private
+  
+  def add_item
+    @control.prompt_with_callback('Add featured artist', 'new artist: ', '') do |selected|
+      @selected_track.featured_artists << selected
+      @context.update
+    end
+  end
+
+  def edit_item
+    @control.prompt_with_callback('Edit featured artist', 'artist: ', current_item) do |selected|
+      @context.update
+    end
+  end
+
+  def get_line_jump(key)
+    @control.prompt_with_callback('Jump to line', 'line to jump to: ', key) do |selected|
+      @featured_pane.focusedentry = selected.to_i - 1
+      @context.update
+    end
+  end
+end
+
 class EditState < ControllerState
   def EditState.state_name
     'Album information'
   end
   
   def prompt_string
-    'edit [a]lbum or [t]rack, [S]ave album to archive (get [Y]AML dump) [b]ack: '
+    'edit [a]lbum, [t]rack or [e]ncoder list, match in [M]usicBrainz, or [A]rchive (get [Y]AML dump) [b]ack: '
   end
   
   def enter
@@ -629,20 +782,42 @@ class EditState < ControllerState
     when 'a'
       @status.message = ''
       @context.change_state(AlbumMetadataEditState)
+    when 'e'
+      @status.message = ''
+      @context.change_state(EncoderListEditState)
+    when 'C'
+      @model.selected.tracks.each {|track| track.comment = nil}
+      update
+    when 'I'
+      @model.selected.tracks.each {|track| track.image = nil}
+      update
     when 't'
       get_track_to_edit
     when 'Y'
       @status.message = ''
       @context.change_state(AlbumYAMLState)
-    when 'S'
-      @status.message = "Validating '#{@model.selected.reconstituted_name}' to archive"
+    when 'M'
+      @status.message = 'Matching in MusicBrainz (which might take a while...)'
 
-      validation_message = validate_album(@model.selected)
-      if validation_message
-        @status.message = "Unable to archive '#{@model.selected.reconstituted_name}'! #{validation_message}"
+      candidates = MusicBrainz::MatcherDao.find_album_matches(@model.selected)
+      if 1 == candidates.size
+        match = candidates.first
+        @status.message = "Successful match found against '#{match.artist.name} - #{match.name}'!"
+        @status.message = "Populating MusicBrainz metadata for '#{match.artist.name} - #{match.name}'!"
+        MusicBrainz::MatcherDao.populate_album_from_match(@model.selected, match)
+        @status.message = "MusicBrainz metadata populated."
+        update
+      elsif 0 == candidates.size
+        @status.message = "No matches found! TODO: Plan B goes here."
       else
-        # TODO: make with the archiving!
+        @status.message = "Uh-oh, #{candidates.size} matches found. Choosing one!"
+        candidate = candidates.detect{|candidate| candidate.release_dates && candidate.release_dates.detect {|date| date['country'] && date['country'] == 'US'}} || candidates.first
+        MusicBrainz::MatcherDao.populate_album_from_match(@model.selected, candidate)
+        update
       end
+    when 'A', 'S'
+      @status.message = "Validating '#{@model.selected.reconstituted_name}' to archive"
+      @status.message = validate_album(@model.selected)
     when 'b', 'Q', 'q'
       @status.message = "Done with '#{@model.selected.reconstituted_name}'!"
       @model.selected = nil
@@ -686,10 +861,48 @@ class EditState < ControllerState
     validation_message = nil
     album_genre = Netjuke::GenreDao.find_genre(album.genre)
     unless album_genre
-      validation_message = "'#{album.genre}' isn't one of the current genres in Netjuke."
+      @control.prompt_with_callback('Validation check failed', 'Genre not found. Override? ', 'n') do |input|
+        unless input == 'y'
+          validation_message = "'#{album.genre}' isn't one of the current genres in Netjuke."
+        else
+          archive_album(@model.selected)
+
+          if @model.list && @model.list.size > 0
+            @context.change_state(BrowseState)
+          else
+            @context.change_state(StartState)
+          end
+          @model.total = Euterpe::Dashboard::Album.count
+        end
+      end
+    else
+      archive_album(@model.selected)
+
+      if @model.list && @model.list.size > 0
+        @context.change_state(BrowseState)
+      else
+        @context.change_state(StartState)
+      end
+      @model.total = Euterpe::Dashboard::Album.count
     end
     
+    @context.update
     validation_message
+  end
+  
+  def archive_album(album)
+    @status.message = "Archiving #{album.reconstituted_name}..."
+    album_dao = AlbumDao.new(ARCHIVE_BASE)
+    warnings = album_dao.archive_album(album)
+    if warnings
+      @status.message = warnings.join(', ')
+    else
+      @status.message = "HOLY SHIT! Archiving completed without warnings!"
+    end
+    AlbumDao.purge(album)
+    
+    @model.selected = nil
+    @model.list = @model.list - [album] if @model.list
   end
 end
 
@@ -701,9 +914,9 @@ class BrowseState < ControllerState
   def prompt_string
     if @model.list != @model.narrowed_list
       @logger.info("original album list is [#{@model.list}] and current list is [#{@model.narrowed_list}]")
-      '[n]arrow results ([c]lear narrowing) [p]rocess highlighted album [b]ack: '
+      '[n]arrow results ([c]lear narrowing) [j]oin albums [p]rocess highlighted album [b]ack: '
     else
-      '[n]arrow results [p]rocess highlighted album [b]ack: '
+      '[n]arrow results [j]oin albums [p]rocess highlighted album [b]ack: '
     end
   end
   
@@ -733,6 +946,8 @@ class BrowseState < ControllerState
     when 'c'
       @model.clear_narrowing!
       @status.message = "narrowing cleared"
+    when 'j'
+      join_albums
     when 'p', 'e', 'C-j', 'C-m'
       @status.message = "selected #{current_album.artist_name} - #{current_album.reconstituted_name} for processing"
       @model.selected = current_album
@@ -767,6 +982,37 @@ class BrowseState < ControllerState
   def get_line_jump(key)
     @control.prompt_with_callback('Jump to line', 'line to jump to: ', key) do |selected|
       @chooser_pane.focusedentry = selected.to_i - 1
+      @context.update
+    end
+  end
+  
+  def join_albums
+    @control.prompt_with_callback('Join two albums', 'master,subject: ', '') do |selected|
+      master_index, subject_index = selected.split(',').collect{|string| string.to_i}
+      master = nil
+      subject = nil
+
+      if master_index > 0 && master_index <= @model.list.size
+        master = @model.list[master_index - 1]
+      end
+
+      if subject_index > 0 && subject_index <= @model.list.size
+        subject = @model.list[subject_index - 1]
+      end
+
+      @status.message = "Merging #{subject.reconstituted_name} into #{master.reconstituted_name}..." if subject
+
+      unless master && subject
+        @status.message = 'Unable to merge because of invalid choice.'
+        @context.update
+        return
+      end
+      
+      new_master = AlbumDao.merge_albums(master, subject)
+      @status.message = "Merge successful!"
+      @model.list -= [subject]
+      @model.list -= [master]
+      @model.list += [new_master]
       @context.update
     end
   end

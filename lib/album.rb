@@ -4,10 +4,11 @@ class Album
   attr_accessor :name, :subtitle, :version_name, :artist_name
   attr_accessor :discs, :number_of_discs
   attr_accessor :genre, :release_date, :modification_date, :compilation, :mixer
-  attr_accessor :musicbrainz_album_id, :musicbrainz_album_artist_id
-  attr_accessor :musicbrainz_album_type, :musicbrainz_album_status, :musicbrainz_album_release_country
   attr_accessor :sort_order, :artist_sort_order
+  attr_accessor :musicbrainz_album_id, :musicbrainz_album_name, :musicbrainz_album_status, :musicbrainz_album_type, :musicbrainz_album_release_country
+  attr_accessor :musicbrainz_album_artist_id, :musicbrainz_album_artist_name, :musicbrainz_album_artist_type, :musicbrainz_album_artist_sort_order
   attr_accessor :non_media_files
+  attr_accessor :cached_album
   
   def initialize
     @discs = []
@@ -211,12 +212,12 @@ class Album
       end
     end
 
-    formatted_album << musicbrainz_info_formatted(simple, omit)
-
     if !simple
       raw_encoder = encoders.join("\n           ")
       formatted_album << "\nEncoded by #{raw_encoder}\n\n" if raw_encoder && raw_encoder != ''
     end
+    
+    formatted_album << musicbrainz_info_formatted(simple, omit)
     
     formatted_album
   end
@@ -260,11 +261,15 @@ class Album
       formatted_musicbrainz_info << "Musicbrainz album info:\n"
       
       musicbrainz_attributes = []
-      musicbrainz_attributes << ["artist UUID", musicbrainz_album_artist_id || "''"] if (musicbrainz_album_artist_id && '' != musicbrainz_album_artist_id) || !omit
+      musicbrainz_attributes << ["name", musicbrainz_album_name || "''"] if (musicbrainz_album_name && '' != musicbrainz_album_name) || !omit
       musicbrainz_attributes << ["album UUID", musicbrainz_album_id || "''"] if (musicbrainz_album_id && '' != musicbrainz_album_id) || !omit
       musicbrainz_attributes << ["release country", musicbrainz_album_release_country || "''"] if (musicbrainz_album_release_country && '' != musicbrainz_album_release_country) || !omit
       musicbrainz_attributes << ["status", musicbrainz_album_status || "''"] if (musicbrainz_album_status && '' != musicbrainz_album_status) || !omit
       musicbrainz_attributes << ["type", musicbrainz_album_type || "''"] if (musicbrainz_album_type && '' != musicbrainz_album_type) || !omit
+      musicbrainz_attributes << ["artist UUID", musicbrainz_album_artist_id || "''"] if (musicbrainz_album_artist_id && '' != musicbrainz_album_artist_id) || !omit
+      musicbrainz_attributes << ["artist name", musicbrainz_album_artist_name || "''"] if (musicbrainz_album_artist_name && '' != musicbrainz_album_artist_name) || !omit
+      musicbrainz_attributes << ["artist sort", musicbrainz_album_artist_sort_order || "''"] if (musicbrainz_album_artist_sort_order && '' != musicbrainz_album_artist_sort_order) || !omit
+      musicbrainz_attributes << ["artist type", musicbrainz_album_artist_type || "''"] if (musicbrainz_album_artist_type && '' != musicbrainz_album_artist_type) || !omit
       
       formatted_musicbrainz_info << StringUtils.justify_attribute_list(musicbrainz_attributes)
     end

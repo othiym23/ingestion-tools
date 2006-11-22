@@ -36,7 +36,7 @@ class PendingStatus < FLNBorderlessPane
   end
 end
 
-class AlbumList < JTTWList
+class GenericList < JTTWList
   def initialize(*args, &block)
     @totalwidth = 1
     super
@@ -45,22 +45,22 @@ class AlbumList < JTTWList
     @color_active = JTTui.aaxz_reversed
   end
 
-  def current_album
-    @album_list[@focusedentry] if @album_list
+  def current_item
+    @content_list[@focusedentry] if @content_list
   end
   
-  def album_list=(list)
-    @album_list = list
+  def content_list=(list)
+    @content_list = list
     update
   end
   
-  def album_string(idx)
-    "#{"%03d" % (idx + 1)}. #{@album_list[idx].artist_name} - #{@album_list[idx].reconstituted_name}" if @album_list
+  def content_string(idx)
+    "#{"%03d" % (idx + 1)}. #{@content_list[idx]}" if @content_list
   end
   
   def update
     @totalwidth = 1
-    @album_list.each_index{ |idx|
+    @content_list.each_index{ |idx|
       cw = self.list_getitemsize(idx)[0]
       @totalwidth = cw if  cw > @totalwidth
     }
@@ -73,7 +73,7 @@ class AlbumList < JTTWList
   
   def list_drawitem(pc, hilighted, focused, idx)
     super(pc, hilighted, true, idx)
-    pc.addstr album_string(idx)
+    pc.addstr content_string(idx)
   end
 
   def list_gettotalwidth
@@ -81,7 +81,7 @@ class AlbumList < JTTWList
   end
 
   def list_getlength
-    (@album_list.size if @album_list) || 0
+    (@content_list.size if @content_list) || 0
   end
 
   def keypress(key)
@@ -106,6 +106,47 @@ class AlbumList < JTTWList
       addmessage @parent, :keypress, key
     end
     scrollaction if callupdate
+  end
+
+  def action
+    @block.call(@content_list[@focusedentry]) if @block
+  end
+end
+
+class AlbumList < GenericList
+  def initialize(*args, &block)
+    super
+  end
+
+  def current_album
+    @album_list[@focusedentry] if @album_list
+  end
+  
+  def album_list=(list)
+    @album_list = list
+    update
+  end
+  
+  def album_string(idx)
+    "#{"%03d" % (idx + 1)}. #{@album_list[idx].artist_name} - #{@album_list[idx].reconstituted_name}" if @album_list
+  end
+  
+  def update
+    @totalwidth = 1
+    @album_list.each_index{ |idx|
+      cw = self.list_getitemsize(idx)[0]
+      @totalwidth = cw if  cw > @totalwidth
+    }
+    updatescrollers
+  end
+  
+  def list_drawitem(pc, hilighted, focused, idx)
+    super(pc, hilighted, true, idx)
+    pc.addstr album_string(idx)
+  end
+
+  def list_getlength
+    (@album_list.size if @album_list) || 0
   end
 
   def action

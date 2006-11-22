@@ -40,7 +40,7 @@ albums.each do |album|
   puts
 end
 
-puts "Dumping artist cache:"
+puts "Dumping artist cache:" if MusicBrainz::Base.fetcher.artist_cache.size > 0
 
 MusicBrainz::Base.fetcher.artist_cache.values.sort{|l,r| l.elements["mm:sortName"].text <=> r.elements["mm:sortName"].text}.each do |artist|
   puts "a: #{artist.elements["dc:title"].text} {#{artist.attributes['rdf:about'].match(/http:\/\/musicbrainz.org\/mm-2\.1\/artist\/(.+)/)[1]}}"

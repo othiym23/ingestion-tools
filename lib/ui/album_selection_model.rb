@@ -12,10 +12,11 @@ class AlbumSelectionModel < SelectionModel
   def selected=(album)
     if album
       @status.message = "reloading metadata for #{album.artist_name} - #{album.name}"
-      album = AlbumDao.reload_album_from_files(album)
+      metadata_album = AlbumDao.reload_album_from_files(album)
+      metadata_album.cached_album = album.cached_album
     end
     
-    super(album)
+    super(metadata_album)
   end
   
   def narrowed_list

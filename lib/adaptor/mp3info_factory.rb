@@ -27,6 +27,14 @@ class Mp3InfoFactory
     musicbrainz_setter("MusicBrainz Artist Id", value)
   end
   
+  def musicbrainz_artist_type
+    musicbrainz_getter("MusicBrainz Artist Type")
+  end
+  
+  def musicbrainz_artist_type=(value)
+    musicbrainz_setter("MusicBrainz Artist Type", value)
+  end
+  
   def musicbrainz_album_artist_id
     musicbrainz_getter("MusicBrainz Album Artist Id")
   end
@@ -251,6 +259,8 @@ class Mp3InfoId3v23Tag < Mp3InfoFactory
       else
         @tag.TXXX = [@tag.TXXX, txxx]
       end
+    else
+      @tag.TXXX = txxx
     end
   end
   
@@ -283,12 +293,30 @@ class Mp3InfoId3v23Tag < Mp3InfoFactory
       value.each do |element|
         user_frame = ID3V24::Frame.create_frame('TXXX', element)
         user_frame.description = content_description
-        @tag.TXXX << featured_frame
+
+        if @tag.TXXX
+          if @tag.TXXX.is_a? Array
+            @tag.TXXX << user_frame
+          else
+            @tag.TXXX = [@tag.TXXX, user_frame]
+          end
+        else
+          @tag.TXXX = user_frame
+        end
       end
     else
       user_frame = ID3V24::Frame.create_frame('TXXX', value)
       user_frame.description = content_description
-      @tag.TXXX << featured_frame
+
+      if @tag.TXXX
+        if @tag.TXXX.is_a? Array
+          @tag.TXXX << user_frame
+        else
+          @tag.TXXX = [@tag.TXXX, user_frame]
+        end
+      else
+        @tag.TXXX = user_frame
+      end
     end
   end
 end

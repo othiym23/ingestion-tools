@@ -105,7 +105,7 @@ class AlbumDao
       else
         actual_compilation = false
         artists.compact.uniq.each do |artist|
-          actual_compilation = true if !album.name.match(/#{artist}/)
+          actual_compilation = true if !album.name.match(/#{Regexp.quote(artist)}/)
         end
         
         if actual_compilation
@@ -201,20 +201,43 @@ class AlbumDao
     end
   end
   
+  def AlbumDao.purge(album)
+    raise Error.new("Have the wrong class, boss!") if !album.respond_to?(:cached_album)
+    raise Error.new("Can't purge without the cached album!") unless album.cached_album
+    
+    purge_cached_album(album.cached_album)
+    
+    album.non_media_files.each do |path|
+      MediaPathDao.purge_cached_path(path)
+    end
+  end
+  
+  def AlbumDao.merge_albums(master, subject)
+    raise Error.new("Can't merge without the cached album!") unless master.cached_album && subject.cached_album
+    AlbumDao.merge_cached_albums(master.cached_album, subject.cached_album)
+  end
+
   def archive_album(album)
     if !already_in_archive?(album)
       album_directories = []
+      moved_files = []
       album.tracks.each do |track|
+        moved_files << track.path
         album_directories << File.dirname(TrackDao.archive_mp3_from_track(@archive_root, track))
       end
       
       non_mp3_dest_folder = album_directories.compact.uniq.sort.first
       
       album.non_media_files.each do |non_media_file_path|
+        moved_files << non_media_file_path
         archive_non_audio_file(non_mp3_dest_folder, non_media_file_path)
       end
       
-      remove_empty_paths(album.tracks.collect{|track| track.path})
+      moved_files.each do |file|
+        File.delete(file)
+      end
+
+      remove_empty_paths(moved_files)
     else
       raise AlbumAlreadyExistsException.new("#{album.artist_name}: #{album.name} is already in the archive")
     end
@@ -235,8 +258,8 @@ class AlbumDao
   end
 
   def archive_non_audio_file(dest_dir, source_path)
-    new_path = File.join(dest_dir, File.filename(source_path))
-    PathUtils.safe_move(source_path, new_path)
+    new_path = File.join(dest_dir, File.basename(source_path))
+    PathUtils.safe_copy(source_path, new_path)
   end
 
   def remove_empty_paths(file_paths)
@@ -260,18 +283,25 @@ class AlbumDao
     
     album_dirs.uniq.each do |directory|
       full_path = File.join(source_root, directory)
-      leftovers = Dir.glob(File.join(full_path, '*'))
+
+      # I hate these stupid things
+      File.delete(File.join(full_path, '.DS_Store')) if File.exists?(File.join(full_path, '.DS_Store'))
+
+      leftovers = Dir.entries(full_path).reject {|filename| filename == '.' || filename == '..'}
       if 0 == leftovers.size
         Dir.delete(full_path)
       else
-        leftover_files = leftovers.collect { |file| file.basename }
-        warnings << "#{full_path} still contains #{leftovers.size} files: #{leftover_files.join(', ')}"
+        warnings << "#{full_path} still contains #{leftovers.size} files: #{leftovers.join(', ')}"
       end
     end
     
     artist_dirs.uniq.each do |directory|
       full_path = File.join(source_root, directory)
-      if 0 == Dir.glob(File.join(full_path, '*')).size
+
+      # I hate these stupid things
+      File.delete(File.join(full_path, '.DS_Store')) if File.exists?(File.join(full_path, '.DS_Store'))
+
+      if 0 == Dir.entries(full_path).reject {|filename| filename == '.' || filename == '..'}.size
         Dir.delete(full_path)
       end
     end
