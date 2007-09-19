@@ -1,0 +1,122 @@
+::AOAIOXXYSZ:: music archive services, v1
+
+  358.81 GiB of music in the archive: 245.97 GiB processed, 112.84 GiB pending.
+  148 GiB of free space remains in the archive.
+
+  12,145 new tracks added from 1,108 albums.
+  31,000 pending tracks total, on 3,100 albums.
+  230 new non-media files added to a total of 2,840 cached.
+
+
+Newly added pending albums (oldest first):
+
+   1. Boxcutter: Oneiric
+   2. Burial: Burial
+   3. [the] caseworker: When I Was a Young King
+   4. Electric Wizard: Dopethrone
+   5. Funeral Mist: Devilry
+   6. Growing: Color Wheel
+   7. Scissorfight: Potential New Agent for Unconventional Warfare
+   8. Soilent Green: Sewn Mouth Secrets
+   9. Various Artists: The Celluloid Years: 12"s And MORE...
+
+
+Album details:
+
+1. Boxcutter: Oneiric (Grime) [2006]
+
+   1: Tauhid                            7: Rikta
+   2: Grub                              8: Sunshine VIP
+   3: Skuff'd                           9: Bad You Do
+   4: Gave Dub                         10: Silver Birch Solstice
+   5: Brood                            11: Hyloz
+   6: Mossy                            12: Chlorophyll
+
+2. Burial: Burial (Grime) [2006]
+
+   1: Intro                             8: Gutted
+   2: Distant Lights                    9: Forgive
+   3: Spaceape (feat. Spaceape)        10: Broken Home
+   4: Wounder                          11: Prayer
+   5: Night Bus                        12: Pirates
+   6: Southern Comfort                 13: Outro
+   7: U Hurt Me
+
+3. [The] Caseworker: When I Was A Young King (Slowcore) [2005]
+
+   1: When I Was A Young King           7: A Rough Parade
+   2: Markievicz' Walls                 8: State
+   3: Advice                            9: My Quare Moon
+   4: The Kick                         10: Scene In The Viewfinder
+   5: Shroud                           11: Identity AA1
+   6: Mullin's Hill
+
+4. Electric Wizard: Dopethrone [2006 Remaster] (Rock) [2000]
+
+   1: Vinum Sabbathi                    5: I, The Witchfinder
+   2: Funeralopolis                     6: The Hills Have Eyes
+   3: Weird Tales: I.Electric           7: We Hate You
+      Frost II.Golgotha III.Altar       8: Dopethrone
+      Of Melektaus                      9: Mind Transferral (Bonus Track)
+   4: Barbarian
+
+5. Funeral Mist: Devilry (Black Metal) [1998]
+
+   1: The Devil's Emissary              6: Hellspell 2
+   2: Bringer Of Terror                 7: Realm Of Shades [demo]
+   3: Nightside Phantom                 8: Hellspell [demo]
+   4: Funeral Mist                      9: Nightside Phantom [demo]
+   5: The God Supreme                  10: The Old One's Grin
+
+6. Growing: Color Wheel (Post Rock) [2005]
+
+   1: Fancy Periods                     4: Blue Angels
+   2: Friendly Confines                 5: Peace Offering
+   3: Cumulusless                       6: Green Pasture
+
+7. Scissorfight: Potential New Agent For Unconventional Warfare (Metalcore) [2002]
+
+   1: Hex                               4: Running The Risk Of Raining Buffalo
+   2: Riverhorse                        5: Harvester
+   3: Maritime Disasters                6: Untitled
+
+8. Soilent Green: Sewn Mouth Secrets (Stoner Metal) [1998]
+
+   1: It Was Just An Accident              8: Her Unsober Ways
+   2: So Hatred                            9: Sewn Mouth Secrets
+   3: Build Fear                          10: Walk A Year In My Mind
+   4: Looking Through Nails               11: Gaged Whore
+   5: Breed In Weakness                   12: Emptiness Found
+   6: Cold Steel Kiss                     13: Sticks And Stones
+   7: Openless
+
+9. Various Artists: The Celluloid Years: 12"s And MORE... (Hip-Hop) [2005]
+
+  disc 1:                                 disc 2:
+   1: Futura 2000 With The Clash -         1: Fab Five Freddy - Change The
+      Escapades Of Futura 2000                Beat [original 12" version]
+      [original 12" version]               2: Fab Five Freddy - Change The
+   2: Time Zone - The Wildstyle               Beat [original 12" French Rap
+      Extended [original 12" version]         version]
+   3: Grandmixer D. ST - Cuts It Up        3: Tribe 2 - What I Like [original
+      [original 12" version]                  12" French dub version]
+   4: Deadline - Makossa Rock              4: Shango - Shango Message
+      [original 12" version]                  [original 12" instrumental edit]
+   5: Last Poets - Get Movin               5: Manu Dibango - Pata Piya
+   6: D. ST - Why Is It Fresh?                [original 12" version]
+      [original 12" Megamix 2 version]     6: Grandmixer D. ST & Jalal - Mean
+   7: Time Zone - Wildstyle [Francois         Machine [original 12" version]
+      Kevorkian & Paul Groucho Smykle      7: Grandmixer D. ST - Home Of Hip
+      remix - original 12" version]           Hop [original 12" version]
+   8: Lightning Rod & Jimi Hendrix -       8: Grandmixer D. ST - Home Of Hip
+      Doriella Du Fontaine [original          Hop [original 12" dub version]
+      12" version]                         9: Time Zone - World Destruction
+   9: Shango - Zulu Groove [original          (feat. Afrika Bambaataa, John
+      12" version]                            Lydon) [original 12" version -
+                                              Bill Laswell remix]
+                                          10: Manu Dibango - Abele Dance
+                                              [original 12" version]
+                                          11: Grandmixer D. ST - Crazy Cuts
+                                              [original 12" long version]
+                                          12: Grandmixer D. ST - Crazy Cuts
+                                              [original 12" dub version]
