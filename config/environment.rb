@@ -5,16 +5,19 @@
 # ENV['RAILS_ENV'] ||= 'production'
 
 # Specifies gem version of Rails to use when vendor/rails is not present
-RAILS_GEM_VERSION = '1.1.6'
+RAILS_GEM_VERSION = '1.2.3' unless defined? RAILS_GEM_VERSION
 
 # Bootstrap the Rails environment, frameworks, and default configuration
 require File.join(File.dirname(__FILE__), 'boot')
 
 Rails::Initializer.run do |config|
-  # Settings in config/environments/* take precedence those specified here
+  # Settings in config/environments/* take precedence over those specified here
   
   # Skip frameworks you're not going to use (only works if using vendor/rails)
-  config.frameworks -= [ :action_controller, :action_view, :action_mailer, :action_web_service ]
+  # config.frameworks -= [ :action_web_service, :action_mailer ]
+
+  # Only load the plugins named here, by default all plugins in vendor/plugins are loaded
+  # config.plugins = %W( exception_notification ssl_requirement )
 
   # Add additional load paths for your own custom dirs
   # config.load_paths += %W( #{RAILS_ROOT}/extras )
@@ -30,7 +33,7 @@ Rails::Initializer.run do |config|
   # Use SQL instead of Active Record's schema dumper when creating the test database.
   # This is necessary if your schema can't be completely dumped by the schema dumper, 
   # like if you have constraints or database-specific column types
-  config.active_record.schema_format = :sql
+  # config.active_record.schema_format = :sql
 
   # Activate observers that should always be running
   # config.active_record.observers = :cacher, :garbage_collector
@@ -49,5 +52,9 @@ end
 #   inflect.irregular 'person', 'people'
 #   inflect.uncountable %w( fish sheep )
 # end
+
+# Add new mime types for use in respond_to blocks:
+# Mime::Type.register "text/richtext", :rtf
+# Mime::Type.register "application/x-mobile", :mobile
 
 # Include your application configuration below
