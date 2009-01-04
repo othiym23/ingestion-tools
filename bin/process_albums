@@ -4,10 +4,6 @@ script_path = File.readlink(script_path) if File.symlink?(script_path)
 
 $: << File.join(File.dirname(script_path), '../lib')
 
-require 'jttui/jttui'
-require 'jttui/jttuistd'
-require 'logger'
-
 require 'adaptor/euterpe_dashboard_factory'
 require 'adaptor/netjuke_factory'
 require 'adaptor/musicbrainz_factory'
@@ -16,13 +12,24 @@ require 'ui/fln_widgets'
 require 'ui/ingestion_widgets'
 require 'ui/album_selection_model'
 require 'ui/controller_state'
+require 'threaded_archiving'
 
-MY_LOGGER = Logger.new('jttui_trace.log')
+require 'jttui/jttui'
+require 'jttui/jttuistd'
+require 'logger'
+
+MY_LOGGER = Logger.new('/tmp/jttui_trace.log')
 MY_LOGGER.level = Logger::WARN
-#ActiveRecord::Base.logger = Logger.new('ingestion.log')
+def MY_LOGGER.format_message(*args)
+  old_format_message(*args)
+end
+
+ActiveRecord::Base.logger = Logger.new('/tmp/ingestion-db.log')
 
 ARCHIVE_BASE = '/data/music/mp3'
 PENDING_BASE = '/data/music/holding/pending'
+
+INGESTION_LOG = '/tmp/ingestion.log'
 
 STDOUT.sync = true
 source_directory = File.expand_path(PENDING_BASE)
@@ -81,6 +88,7 @@ end
 module Euterpe
   module Ingestion
     def self.connect_to_euterpe
+      ActiveRecord::Base.allow_concurrency = true
       ActiveRecord::Base.establish_connection(
         :adapter  => "postgresql",
         :username => "ogd",
@@ -161,16 +169,23 @@ class ProcessingApplication < FLNBorderlessPane
   attr_reader :album_loader
   
   def initialize(parent)
-    MY_LOGGER.info("ProcessingApplication initialization started")
+    @ingestion_log = Logger.new(INGESTION_LOG)
+    @ingestion_log.level = Logger::DEBUG
+    
+    # Rails likes to control the horizontal when it comes to logging, so
+    # a quick singleton method will give me back less bonkers logging
+    def @ingestion_log.format_message(*args)
+      old_format_message(*args)
+    end
+    
+    @ingestion_log.info('process_albums') { "application initialization started" }
     self.visible = false
     
     super(parent, self.class.name, 0, 0, parent.w, parent.h, '')
     @color = JTTui.aaxz_basic
-    
-    @album_loader = AlbumDao
 
-    @album_model = AlbumSelectionModel.new
-    @album_model.album_loader = @album_loader
+    @album_loader = AlbumDao
+    @album_model = AlbumSelectionModel.new(@album_loader, @ingestion_log)
     
     @status_pane = StatusPane.new(@album_model, self, 0, self.h - 3, self.w)
     @album_model.status = @status_pane
@@ -178,24 +193,27 @@ class ProcessingApplication < FLNBorderlessPane
     @control_pane = ControlLine.new(@status_pane, @status_pane.h - 2, @status_pane.w)
     
     @status_pane.message = "Connecting to metadata caches..."
+    @ingestion_log.info('process_albums') { "connecting to metadata caches" }
     Euterpe::Ingestion::connect_to_netjuke
     Euterpe::Ingestion::connect_to_euterpe
     @status_pane.message = 'Connected to metadata caches'
+    @ingestion_log.info('process_albums') { "connected to metadata caches" }
     
     ControllerState.model = @album_model
     ControllerState.context = self
     ControllerState.control = @control_pane
     ControllerState.status = @status_pane
-    ControllerState.logger = MY_LOGGER
+    ControllerState.logger = @ingestion_log
+    ControllerState.archiver = AlbumArchiver.new(@ingestion_log, @status_pane, @album_model, ARCHIVE_BASE)
 
     @current_state = StartState.default
     
     @album_model.add_observer(self)
     @album_model.total = Euterpe::Dashboard::Album.count
-    MY_LOGGER.info("#{@album_model.total} albums loaded")
+    @ingestion_log.info('process_albums') { "#{@album_model.total} albums pending" }
     
     self.visible = true
-    MY_LOGGER.info("ProcessingApplication initialization complete")
+    @ingestion_log.info('process_albums') { "ProcessingApplication initialization complete" }
   end
   
   def keypress(key)
@@ -238,13 +256,13 @@ class ProcessingApplication < FLNBorderlessPane
   end
   
   def change_state(new_state_klass, *args)
-    MY_LOGGER.info("#{self.class.name}.change_state#before in state '#{@current_state.class.name}'")
+    MY_LOGGER.debug(self.class.name) { "change_state#before in state '#{@current_state.class.name}'" }
     @previous_state = @current_state
     @current_state = new_state_klass.default
 
     @previous_state.exit if @previous_state
     @current_state.enter(*args) if @current_state
-    MY_LOGGER.info("#{self.class.name}.change_state#after in state '#{@current_state.class.name}'")
+    MY_LOGGER.debug(self.class.name) { "change_state#after in state '#{@current_state.class.name}'" }
     
     update
   end

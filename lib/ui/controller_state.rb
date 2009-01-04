@@ -7,29 +7,30 @@ class IllegalStateError < StandardError; end
 
 class ControllerState
   include Singleton
-  attr_writer :model, :context, :control, :status, :logger
+  attr_writer :model, :context, :control, :status, :logger, :archiver
   
   def ControllerState.default
     default_instance = instance
-    default_instance.model = self.model
-    default_instance.context = self.context
-    default_instance.control = self.control
-    default_instance.status = self.status
-    default_instance.logger = self.logger
+    default_instance.model = @@model
+    default_instance.context = @@context
+    default_instance.control = @@control
+    default_instance.status = @@status
+    default_instance.logger = @@logger
+    default_instance.archiver = @@archiver
     
     default_instance
   end
   
   def enter
-    @logger.warn("[#{self.class.name}] abstract method 'enter' called")
+    @logger.warn(self.class.name) { "abstract method 'enter' called" }
   end
   
   def exit
-    @logger.warn("[#{self.class.name}] abstract method 'exit' called")
+    @logger.warn(self.class.name) { "abstract method 'exit' called" }
   end
   
   def update
-    @logger.warn("[#{self.class.name}] abstract method 'update' called")
+    @logger.warn(self.class.name) { "abstract method 'update' called" }
   end
   
   protected
@@ -72,6 +73,14 @@ class ControllerState
   
   def self.logger=(new_logger)
     @@logger = new_logger
+  end
+  
+  def self.archiver
+    @@archiver
+  end
+  
+  def self.archiver=(new_archiver)
+    @@archiver = new_archiver
   end
   
   def pass_the_buck(key)
@@ -414,7 +423,7 @@ class EncoderListEditState < ControllerState
     when 'b', 'Q', 'q'
       @context.change_state(EditState)
     else
-      @yaml_pane.keypress(key)
+      @encoder_pane.keypress(key)
     end
   end
   
@@ -422,7 +431,7 @@ class EncoderListEditState < ControllerState
   
   def add_encoder
     @status.message = ''
-    @control.prompt_with_callback('Edit encoder list', 'New encoder: ', '::AOAIOXXYSZ:: music archive services, v1') do |input|
+    @control.prompt_with_callback('Edit encoder list', 'New encoder: ', "::AOAIOXXYSZ:: encoding services, v1") do |input|
       @model.selected.tracks.each {|track| track.encoder ||= []; track.encoder += [input] }
       @context.update
     end
@@ -771,6 +780,7 @@ class EditState < ControllerState
   
   def update
     if @model.selected
+      @logger.debug(self.class.name) { "about to display #{@model.selected}" }
       @album_info_pane.list = @model.selected.display_formatted(false).split("\n")
       @album_info_pane.update
       @album_info_pane.visible = true unless @album_info_pane.visible
@@ -810,8 +820,8 @@ class EditState < ControllerState
       elsif 0 == candidates.size
         @status.message = "No matches found! TODO: Plan B goes here."
       else
-        @status.message = "Uh-oh, #{candidates.size} matches found. Choosing one!"
-        candidate = candidates.detect{|candidate| candidate.release_dates && candidate.release_dates.detect {|date| date['country'] && date['country'] == 'US'}} || candidates.first
+        @status.message = "Uh-oh, #{candidates.size} matches found. Randomly choosing one!"
+        candidate = candidates.detect{|candidate| candidate.release_dates && candidate.release_dates.detect {|date| date['country'] && date['country'] == 'US' && date['year'] && date['year'] == @model.selected.release_date}} || candidates[rand(candidates.size)]
         MusicBrainz::MatcherDao.populate_album_from_match(@model.selected, candidate)
         update
       end
@@ -891,18 +901,18 @@ class EditState < ControllerState
   end
   
   def archive_album(album)
-    @status.message = "Archiving #{album.reconstituted_name}..."
-    album_dao = AlbumDao.new(ARCHIVE_BASE)
-    warnings = album_dao.archive_album(album)
-    if warnings
-      @status.message = warnings.join(', ')
-    else
-      @status.message = "HOLY SHIT! Archiving completed without warnings!"
+    @status.message = "Queueing #{album.reconstituted_name} for archiving..."
+    @archiver.queue_album(album)
+    
+    @logger.debug(self.class.name) { "currently selected album is [#{@model.selected.original_album}]" }
+    @logger.debug(self.class.name) { "BEFORE narrowed album list is [#{@model.list}]" }
+    
+    if @model.list && @model.list.size > 0
+      @model.list.delete(@model.selected.original_album)
+      @logger.debug(self.class.name) { "AFTER narrowed album list is [#{@model.list}]" }
     end
-    AlbumDao.purge(album)
     
     @model.selected = nil
-    @model.list = @model.list - [album] if @model.list
   end
 end
 
@@ -913,7 +923,7 @@ class BrowseState < ControllerState
   
   def prompt_string
     if @model.list != @model.narrowed_list
-      @logger.info("original album list is [#{@model.list}] and current list is [#{@model.narrowed_list}]")
+      @logger.info(self.class.name) { "original album list is [#{@model.list}] and current list is [#{@model.narrowed_list}]" }
       '[n]arrow results ([c]lear narrowing) [j]oin albums [p]rocess highlighted album [b]ack: '
     else
       '[n]arrow results [j]oin albums [p]rocess highlighted album [b]ack: '
@@ -1024,7 +1034,11 @@ class StartState < ControllerState
   end
   
   def prompt_string
-    '[f]ind albums [r]andom album [m]ost recent album [q]uit: '
+    if @model.archiving_queue.size > 0
+      '[f]ind albums [r]andom album [m]ost recent album [P]rocess queue [q]uit: '
+    else
+      '[f]ind albums [r]andom album [m]ost recent album [q]uit: '
+    end
   end
   
   def enter
@@ -1053,6 +1067,8 @@ class StartState < ControllerState
       else
         @status.message = "No recent albums found -- wait for next ingestion run!"
       end
+    when 'P'
+      @archiver.process_queue
     when 'Q', 'q'
       @status.message = ''
       @context.addmessage nil, :quitloop, key
@@ -1074,20 +1090,23 @@ class StartState < ControllerState
       finish_time = Time.now
 
       time = finish_time - start_time
-
-      found_albums = @model.narrowed_list || [@model.selected] || []
-      case found_albums.size
-      when 0
-        @status.message = "no results (query ran in #{time.to_f} seconds)"
-      when 1
+      
+      @logger.debug(self.class.name) { "narrowed list is [#{@model.narrowed_list}]" }
+      @logger.debug(self.class.name) { "selection is [#{@model.selected}]" }
+      
+      if @model.selected
         @status.message = "single album found in #{time.to_f} seconds"
-        @model.selected = found_albums.first
+        @logger.info(self.class.name) { "single album found in #{time.to_f} seconds" }
         @context.change_state(EditState)
-        @logger.debug("SearchMode.find_albums found '#{found_albums.first.name}'")
-      else
-        @status.message = "#{found_albums.size} records found in #{time.to_f} seconds"
+        @logger.debug(self.class.name) { "found '#{@model.selected.reconstituted_name}'" }
+      elsif @model.narrowed_list && @model.narrowed_list.size > 0
+        @status.message = "#{@model.narrowed_list.size} records found in #{time.to_f} seconds"
+        @logger.info(self.class.name) { "#{@model.narrowed_list.size} records found in #{time.to_f} seconds" }
         @context.change_state(BrowseState)
-        @logger.debug("SearchMode.find_albums found [#{@model.list.map{|album| album.name}.join(', ')}]")
+        @logger.debug(self.class.name) { "search for '#{query}' found [#{@model.narrowed_list.map{|album| album.name}.join(', ')}]" }
+      else
+        @status.message = "no results (query ran in #{time.to_f} seconds)"
+        @logger.debug(self.class.name) { "no results (query ran in #{time.to_f} seconds)" }
       end
     end
   end
