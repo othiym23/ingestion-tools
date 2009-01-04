@@ -35,14 +35,4 @@ class EuterpeDashTest < IngestionCase
       assert_equal 'Killing Sound', track_record.disc.album.name
     end
   end
-  
-  def test_disc_buckets
-    album_paths = find_files("Razor X Productions/*/*.mp3")
-    
-    updated_paths = DiscDao.find_changed_paths(album_paths)
-    assert_equal 20, updated_paths.size
-
-    unchanged_paths = DiscDao.find_changed_paths(album_paths)
-    assert_equal 0, unchanged_paths.size
-  end
 end
