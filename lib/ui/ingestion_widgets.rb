@@ -25,11 +25,15 @@ class PendingStatus < FLNBorderlessPane
   end
 
   def current_message
-    message = @model.total.to_s << ' albums'
+    message = "P:#{@model.total.to_s}"
     if @model.selected
-      message << ', 1 loaded'
+      message << '|L:1'
     elsif @model.narrowed_list && @model.narrowed_list.size > 0
-      message << ', ' << @model.narrowed_list.size.to_s << ' loaded'
+      message << '|L:' << @model.narrowed_list.size.to_s
+    end
+    
+    if @model.archiving_queue.size > 0
+      message << '|Q:' << @model.archiving_queue.size.to_s
     end
     
     message
@@ -125,6 +129,10 @@ class AlbumList < GenericList
   def album_list=(list)
     @album_list = list
     update
+  end
+  
+  def album_list
+    @album_list
   end
   
   def album_string(idx)
