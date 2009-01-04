@@ -172,7 +172,7 @@ class AlbumTest < IngestionCase
   
   def test_encoder_list
     album = load_albums("Razor X Productions/*/*.mp3").first
-    encoders = ['Exact Audio Copy (secure mode)', 'lame 3.96.1 --alt-preset standard', '::AOAIOXXYSZ:: encoding services, v1']
+    encoders = ['Exact Audio Copy (secure mode)', 'lame 3.97 -V1', '::AOAIOXXYSZ:: encoding services, v1']
     assert_equal encoders, album.encoders, 'encoder lists should match'
     assert_equal 0, album.discs.compact.collect{|disc| disc.tracks.compact }.flatten.reject{ |track| track.encoder == encoders }.size
   end
@@ -215,7 +215,7 @@ class AlbumTest < IngestionCase
     2.10: Don't Version
 
 Encoded by Exact Audio Copy (secure mode)
-           lame 3.96.1 --alt-preset standard
+           lame 3.97 -V1
            ::AOAIOXXYSZ:: encoding services, v1
 
 END
