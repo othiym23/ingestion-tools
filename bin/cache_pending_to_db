@@ -10,7 +10,9 @@ require 'find'
 require 'dao/album_dao'
 require 'adaptor/euterpe_dashboard_factory'
 
-PENDING_BASE = '/data/music/holding/pending'
+ARCHIVE_ROOT = '/data'
+PENDING_BASE = ARCHIVE_ROOT + '/music/holding/pending'
+
 raise IOError.new("pending media folder #{PENDING_BASE} does not exist!") unless File.exists?(PENDING_BASE)
 
 class Numeric
@@ -61,7 +63,7 @@ def wrap_text(text, col = 80)
 end
 
 def archive_summary_statistics(archive_location = '/data')
-  df_stats = open("|df -k #{archive_location}").read.split("\n").select{|line| line.match(/\/dev/)}.collect{|line| line.split(/\s+/)}
+  df_stats = open("|df -k #{archive_location}").read.split("\n").select{|line| line.match(/#{archive_location}/)}.collect{|line| line.split(/\s+/)}
 
   archive_used = df_stats[0][2].to_i * 1.kibibyte
   archive_free = df_stats[0][3].to_i * 1.kibibyte
@@ -118,13 +120,11 @@ def format_multidisc_album(album)
         first_string = (first_disc[line] || '')
         width = 38 + (first_string.length - first_string.unpack('U*').length)
 
-        output << "%-#{width}s" % first_string + "  " + (second_disc[line] || '') + "\n"
+        output << "%-#{width}s" % first_string + "  #{second_disc[line] || ''}\n"
       end
     else
       first_disc = formatted_discs[row * 2].split(/\n/)
-      output << "  disc #{album.discs.compact[row].number}:"
-
-      first_disc.each{|line| output << first_disc[line]}
+      first_disc.size.times {|line| output << "#{first_disc[line]}\n"} 
     end
 
     output << "\n"
@@ -167,8 +167,8 @@ def format_singledisc_album(album)
     output = ''
     [first_column.size, second_column.size].max.times do |line|
       first_string = (first_column[line] || '')
-      width = 38 + (first_string.length - first_string.unpack('U*').length)
-      output << "%-#{width}s" % (first_string) + "  " + (second_column[line] || '') + "\n"
+      width = 38 #+ (first_string.length - first_string.unpack('U*').length)
+      output << "%-#{width}s" % (first_string) + "  #{second_column[line] || ''}\n"
     end
   else
     output = formatted_disc.compact[0]
@@ -266,7 +266,7 @@ ActiveRecord::Base.establish_connection(
 )
 
 report = "::AOAIOXXYSZ:: music archive services, v1\n\n"
-report << archive_summary_statistics
+report << archive_summary_statistics(ARCHIVE_ROOT)
 
 # gather all the uncached files in the holding tank, caching them as we go
 new_albums = cache_pending_albums(PENDING_BASE)
