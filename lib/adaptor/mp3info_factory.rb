@@ -182,7 +182,7 @@ class Mp3InfoId3v23Tag < Mp3InfoFactory
   end
   
   def release_date=(value)
-    @tag.TDRC = value
+    @tag.TYER = value
   end
   
   def comment
@@ -285,7 +285,7 @@ class Mp3InfoId3v23Tag < Mp3InfoFactory
   
   def user_defined(content_description)
     returned = user_defined_list(content_description)
-    returned.compact.uniq.first if returned
+    returned.compact.first if returned
   end
   
   def user_defined_set(content_description, value)
@@ -322,6 +322,14 @@ class Mp3InfoId3v23Tag < Mp3InfoFactory
 end
 
 class Mp3InfoId3v24Tag < Mp3InfoId3v23Tag
+  def album_artist_name
+    @tag.TPE2
+  end
+  
+  def album_artist_name=(value)
+    @tag.TPE2 = value
+  end
+
   def album_sort_order
     @tag.TSOA
   end
@@ -346,12 +354,8 @@ class Mp3InfoId3v24Tag < Mp3InfoId3v23Tag
     @tag.TSOT = value
   end
   
-  def release_date
-    @tag.TYER
-  end
-  
   def release_date=(value)
-    @tag.TYER = value
+    @tag.TDRC = value
   end
   
   def featured_artists
@@ -601,7 +605,7 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
   
   def user_defined(content_description)
     returned = user_defined_list(content_description)
-    returned.compact.uniq.first if returned
+    returned.compact.first if returned
   end
   
   def user_defined_set(content_description, value)
@@ -609,12 +613,30 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
       value.each do |element|
         user_frame = ID3V24::Frame.create_frame('TXX', element)
         user_frame.description = content_description
-        @tag.TXX << featured_frame
+
+        if @tag.TXX
+          if @tag.TXX.is_a? Array
+            @tag.TXX << user_frame
+          else
+            @tag.TXX = [@tag.TXX, user_frame]
+          end
+        else
+          @tag.TXX = user_frame
+        end
       end
     else
       user_frame = ID3V24::Frame.create_frame('TXX', value)
       user_frame.description = content_description
-      @tag.TXX << featured_frame
+
+      if @tag.TXX
+        if @tag.TXX.is_a? Array
+          @tag.TXX << user_frame
+        else
+          @tag.TXX = [@tag.TXX, user_frame]
+        end
+      else
+        @tag.TXX = user_frame
+      end
     end
   end
 end
