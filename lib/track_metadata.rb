@@ -53,7 +53,7 @@ class TrackPathMetadata < TrackMetadata
     
     track_metadata.album_artist_name = track.disc.album.artist_name
     track_metadata.artist_name = track.artist_name
-    track_metadata.album_name = track.disc.album.name
+    track_metadata.album_name = track.disc.album.reconstituted_name
     track_metadata.disc_number = track.disc.number
 
     track_metadata
@@ -65,7 +65,7 @@ class TrackPathMetadata < TrackMetadata
   
   def disc_directory
     cleaned_album = strip_diacritics(@album_name).gsub(/[^A-Za-z0-9 ]/, '')
-    cleaned_album << " disc " << @disc_number.to_s if @disc_number && @disc_number != ''
+    cleaned_album << " disc #{@disc_number.to_s}" if @disc_number && @disc_number != ''
     cleaned_album
   end
   
@@ -134,9 +134,12 @@ class TrackId3Metadata < TrackMetadata
   attr_accessor :unique_id
   attr_accessor :track_sort_order, :artist_sort_order, :album_sort_order
   
+  def initialize(full_path)
+    @full_path = full_path
+  end
+  
   def TrackId3Metadata.load_from_path(full_path)
-    id3 = TrackId3Metadata.new
-    id3.full_path = full_path
+    id3 = TrackId3Metadata.new(full_path)
     
     Mp3Info.open(full_path) do |mp3info_dao|
       # Just in case, try prepopulating with ID3v1 data if it's available
@@ -195,9 +198,8 @@ class TrackId3Metadata < TrackMetadata
   end
   
   def TrackId3Metadata.load_from_track(track)
-    id3 = TrackId3Metadata.new
+    id3 = TrackId3Metadata.new(track.path)
     
-    id3.full_path = track.path
     id3.track_name = track.reconstituted_name
     id3.remix_name = track.remix
     id3.artist_name = track.artist_name
@@ -217,7 +219,7 @@ class TrackId3Metadata < TrackMetadata
     disc = track.disc
     if disc
       id3.disc_number = disc.number
-      id3.max_sequence = disc.number_of_tracks
+      id3.max_sequence = !disc.number_of_tracks.nil? && disc.number_of_tracks > 0 ? disc.number_of_tracks : disc.number_of_tracks_loaded
 
       album = disc.album
       if album
@@ -257,6 +259,7 @@ class TrackId3Metadata < TrackMetadata
       id3v2.album_subtitle = album_subtitle if album_subtitle && '' != album_subtitle
       id3v2.album_version = album_version if album_version && '' != album_version
       id3v2.artist_name = artist_name if artist_name && '' != artist_name
+      id3v2.album_artist_name = album_artist_name if album_artist_name && '' != album_artist_name && (!compilation || album_artist_name != artist_name)
       id3v2.featured_artists = featured_artists if featured_artists && featured_artists.size > 0
       id3v2.album_image = album_image if album_image
 
@@ -269,7 +272,7 @@ class TrackId3Metadata < TrackMetadata
       id3v2.encoder = encoder if encoder && '' != encoder
       
       id3v2.genre = genre if genre
-      id3v2.compilation = compilation if compilation
+      id3v2.compilation = false if compilation
       id3v2.release_date = release_date if release_date
       
       id3v2.musicbrainz_track_id = unique_id if unique_id
@@ -290,7 +293,7 @@ class TrackId3Metadata < TrackMetadata
   
   def TrackId3Metadata.reconcile_value(id3v2_frame)
     if id3v2_frame.is_a? Array
-      compacted_array = id3v2_frame.compact.map {|frame| frame.value if frame.respond_to?(:value)}.uniq
+      compacted_array = id3v2_frame.compact.map {|frame| (frame.respond_to?(:value) ? frame.value : frame)}.uniq
       if compacted_array.compact.size == 1
         return compacted_array.first
       else
@@ -298,7 +301,7 @@ class TrackId3Metadata < TrackMetadata
         return compacted_array.first
       end
     else
-     return id3v2_frame.value if id3v2_frame
+     return (id3v2_frame.respond_to?(:value) ? id3v2_frame.value : id3v2_frame)
     end
   end
   
