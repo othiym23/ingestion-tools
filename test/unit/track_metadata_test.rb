@@ -129,6 +129,7 @@ class TrackMetadataTest < IngestionCase
       id3.featured_artists = []
       id3.featured_artists << 'Shabba Ranks'
       id3.featured_artists << 'Daddy Freddy'
+      assert_equal ['Shabba Ranks', 'Daddy Freddy'], id3.featured_artists,
       
       id3.save
       
