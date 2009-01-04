@@ -1,10 +1,9 @@
 management console:
-* add ability to edit track / disc numbers
+* add ability to edit disc numbers
 * create validation framework for data entry
 * join multiple discs into a single album
 * move values from encoder string to comments for all tracks (make encoder
   promotion smarter)
-* resequence tracks on album
 * support the replacement of an album already existing in the archive with a
   better version
 ** prompt to compare two albums
@@ -15,16 +14,12 @@ management console:
   the first three albums)
 * associate arbitrary image with track
 * manage pending content:
-** write periodic task to connect to MusicBrainz and try to match unmatched
-   tracks
 ** cache images and test that all metadata is being cached properly
 ** modify the processing script to use cached metadata instead of reloading
    from MP3 files
 
 album ingestion:
 * split consolidated multi-disc albums back into their discs
-* acquire MusicBrainz metadata
-** move MusicBrainz metadata into "shadow" MusicBrainz classes
 * acquire track lengths
 * add classical support:
 ** add reading and writing of ID3v2 fields related to orchestral and
@@ -33,10 +28,8 @@ album ingestion:
 
 heuristic metadata correction:
 * collect comments and turn into encoder when a fraction are missing
-* correctly handle split albums with "Artist 1 / Artist 2" titles
 * improve encoder cattle-catcher to do something different with 
   release codes (i.e. not sticking them on the encoder string)
-* handle "pretty" canonicalization of featured artist list
 * copy producer credits to iTunes tags
 
 audio file validation / QA:
