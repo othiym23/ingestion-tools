@@ -22,40 +22,43 @@ class TrackValidator
   
   def validate(track, size, disc_number, track_number, filename, featured_artist = nil)
     @parent_test.assert_equal disc_number, track.disc.number,
-                              "disc numbers should match"
+                              "disc numbers should match for '#{filename}'"
     @parent_test.assert_equal @number_of_discs, track.disc.album.number_of_discs,
-                              "numbers of discs should match"
+                              "numbers of discs should match for '#{filename}'"
     @parent_test.assert_equal track_number, track.sequence,
-                              "track numbers should match"
+                              "track numbers should match for '#{filename}'"
     @parent_test.assert_equal @number_of_tracks[disc_number - 1], track.disc.number_of_tracks,
-                              "numbers of tracks per disc should match"
+                              "numbers of tracks per disc should match for '#{filename}'"
     @parent_test.assert_equal @genre, track.genre,
-                              "genres should match"
+                              "genres should match for '#{filename}'h"
     @parent_test.assert_equal @artist_name, track.artist_name,
-                              "artist names should match"
+                              "artist names should match for '#{filename}'"
     @parent_test.assert_equal File.join(@disc_path_prefixes[disc_number - 1], filename), track.path,
                               "paths should match"
     if featured_artist
       @parent_test.assert track.featured_artists.detect { |artist| featured_artist == artist },
-                          "artist #{featured_artist} should be featured but isn't"
+                          "artist #{featured_artist} should be featured but isn't for '#{filename}'"
     end
     
     @parent_test.assert_in_delta size, File.stat(track.path).size, SIZE_DELTA,
-                                 "changing the ID3 tag size shouldn't mangle things much"
+                                 "changing the ID3 tag size shouldn't mangle things much for '#{filename}'"
   end
 end
 
 # the most scary set of tests in the system: writing corrected MP3 files!
 class AlbumWriteTest < Test::Unit::TestCase
-  @@source_root = File.expand_path(File.join(File.dirname(__FILE__), 'sample_files'))
-  @@staging_root = File.expand_path(File.join(File.dirname(__FILE__), 'staging'))
-  @@processed_root = File.expand_path(File.join(File.dirname(__FILE__), 'processed'))
+  def setup
+    @staging_root = File.expand_path(File.join(File.dirname(__FILE__), 'staging'))
+    @processed_root = File.expand_path(File.join(File.dirname(__FILE__), 'processed'))
+  end
   
   def test_integrated_write_album
     begin
-      FileUtils.cp_r(@@source_root, @@staging_root)
+      source_root = File.expand_path(File.join(File.dirname(__FILE__), 'sample_files'))
+
+      FileUtils.cp_r(source_root, @staging_root)
       
-      source_paths = find_mp3_files(@@staging_root)
+      source_paths = find_mp3_files(@staging_root)
       assert_equal 20, source_paths.size,
                    "there were 20 MP3 files when I started -- why aren't there now?"
 
@@ -66,15 +69,15 @@ class AlbumWriteTest < Test::Unit::TestCase
       assert_equal 2, album.number_of_discs
       assert_equal 2, album.number_of_discs_loaded
       
-      album_dao = AlbumDao.new(@@processed_root)
+      album_dao = AlbumDao.new(@processed_root)
       warnings = album_dao.archive_album(album)
       assert_equal 0, warnings.size,
                    "there should be no warnings, instead we got #{warnings.join('; ')}"
       
-      assert !File.exists?(File.join(@@staging_root, 'Razor X Productions')),
+      assert !File.exists?(File.join(@staging_root, 'Razor X Productions')),
              "after archiving, empty directories should be removed"
       
-      archived_paths = find_mp3_files(@@processed_root)
+      archived_paths = find_mp3_files(@processed_root)
       assert_equal 20, archived_paths.size,
                    "there were originally 20 tracks, should be 20 now"
       
@@ -87,8 +90,8 @@ class AlbumWriteTest < Test::Unit::TestCase
       assert_equal 2, archived_album.number_of_discs_loaded
       
       track_checker = TrackValidator.new(self, 'Razor X Productions', 'Dancehall', 2,
-                                         [File.join(@@processed_root, 'Razor X Productions/Killing Sound disc 1'),
-                                          File.join(@@processed_root, 'Razor X Productions/Killing Sound disc 2')],
+                                         [File.join(@processed_root, 'Razor X Productions/Killing Sound disc 1'),
+                                          File.join(@processed_root, 'Razor X Productions/Killing Sound disc 2')],
                                          [10, 10])
       
       archived_album.tracks.each do |track|
@@ -172,6 +175,89 @@ class AlbumWriteTest < Test::Unit::TestCase
     end
   end
   
+  def test_writing_album_should_not_truncate_files
+    begin
+      source_root = File.expand_path(File.join(File.dirname(__FILE__), 'sample_files_2'))
+
+      FileUtils.cp_r(source_root, @staging_root)
+      
+      source_paths = find_mp3_files(@staging_root)
+      assert_equal 9, source_paths.size,
+                   "there were 20 MP3 files when I started -- why aren't there now?"
+
+      albums = AlbumDao.load_albums_from_paths(source_paths)
+      assert_equal 1, albums.size, "there's only 1 album here"
+      
+      album = albums.first
+      assert_equal 1, album.number_of_discs
+      assert_equal 1, album.number_of_discs_loaded
+      
+      album.name = "Peter Gabriel [car]"
+      album.genre = "Progressive Rock"
+      
+      album_dao = AlbumDao.new(@processed_root)
+      
+      warnings = album_dao.archive_album(album)
+      assert_equal 0, warnings.size,
+                   "there should be no warnings, instead we got #{warnings.join('; ')}"
+      
+      assert !File.exists?(File.join(@staging_root, 'Peter Gabriel')),
+             "after archiving, empty directories should be removed"
+      
+      archived_paths = find_mp3_files(@processed_root)
+      assert_equal 9, archived_paths.size,
+                   "there were originally 20 tracks, should be 20 now"
+      
+      archived_albums = AlbumDao.load_albums_from_paths(archived_paths)
+      assert_equal 1, archived_albums.size, "there was only 1 album to begin with"
+      
+      archived_album = archived_albums.first
+      assert_equal 1, archived_album.number_of_discs,
+                   "album DAO should correct the number of discs automatically"
+      assert_equal 1, archived_album.number_of_discs_loaded
+      
+      track_checker = TrackValidator.new(self, 'Peter Gabriel', 'Progressive Rock', 1,
+                                         [File.join(@processed_root, 'Peter Gabriel/Peter Gabriel car')],
+                                         [9])
+      
+      archived_album.tracks.each do |track|
+        case track.name
+        when 'Moribund The Burgemeister'
+          track_checker.validate(track, 6989662, 1, 1,
+                                 'Peter Gabriel - Peter Gabriel car - 01 - Moribund The Burgemeister.mp3')
+        when 'Solsbury Hill'
+          track_checker.validate(track, 8667768, 1, 2,
+                                 'Peter Gabriel - Peter Gabriel car - 02 - Solsbury Hill.mp3')
+        when 'Modern Love'
+          track_checker.validate(track, 5744066, 1, 3,
+                                 'Peter Gabriel - Peter Gabriel car - 03 - Modern Love.mp3')
+        when 'Excuse Me'
+          track_checker.validate(track, 5889844, 1, 4,
+                                 'Peter Gabriel - Peter Gabriel car - 04 - Excuse Me.mp3')
+        when 'Humdrum'
+          track_checker.validate(track, 6041655, 1, 5,
+                                 'Peter Gabriel - Peter Gabriel car - 05 - Humdrum.mp3')
+        when 'Slowburn'
+          track_checker.validate(track, 7655288, 1, 6,
+                                 'Peter Gabriel - Peter Gabriel car - 06 - Slowburn.mp3')
+        when 'Waiting For The Big One'
+          track_checker.validate(track, 12018047, 1, 7,
+                                 'Peter Gabriel - Peter Gabriel car - 07 - Waiting For The Big One.mp3')
+        when 'Down The Dolce Vita'
+          track_checker.validate(track, 8934480, 1, 8,
+                                 'Peter Gabriel - Peter Gabriel car - 08 - Down The Dolce Vita.mp3')
+        when 'Here Comes The Flood'
+          track_checker.validate(track, 9212525, 1, 9,
+                                 'Peter Gabriel - Peter Gabriel car - 09 - Here Comes The Flood.mp3')
+        else
+          fail "Track '#{track.name}'' isn't supposed to be part of this release."
+        end
+      end
+    ensure
+      clean_paths
+    end
+  end
+  
   private
   
   def find_mp3_files(start_path)
@@ -179,6 +265,6 @@ class AlbumWriteTest < Test::Unit::TestCase
   end
   
   def clean_paths
-    FileUtils.rmtree([@@staging_root, @@processed_root])
+    FileUtils.rmtree([@staging_root, @processed_root])
   end
 end
