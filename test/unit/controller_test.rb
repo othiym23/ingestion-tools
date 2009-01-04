@@ -7,8 +7,6 @@ require 'flexmock'
 
 class ControllerTest < IngestionCase
   def setup
-    @album_model = AlbumSelectionModel.new
-    
     @model_mock = FlexMock.new
     ControllerState.model = @model_mock
 
@@ -23,11 +21,16 @@ class ControllerTest < IngestionCase
     
     @logger_mock = FlexMock.new
     ControllerState.logger = @logger_mock
+
+    @loader_mock = FlexMock.new
+    ControllerState.archiver = @loader_mock
+
+    @album_model = AlbumSelectionModel.new(@logger_mock, @loader_mock)
   end
   
   def test_generic_controller
     warn_text = ''
-    @logger_mock.mock_handle(:warn) { |message| warn_text = message }
+    @logger_mock.should_receive(:warn) { |message| warn_text = message }
     
     controller = ControllerState.default
     assert_nothing_raised { controller.enter }
@@ -41,8 +44,8 @@ class ControllerTest < IngestionCase
 
   def test_basic_start_state_startup
     warn_text = ''
-    @model_mock.mock_handle(:list) { nil }
-    @logger_mock.mock_handle(:warn) { |message| warn_text = message }
+    @model_mock.should_receive(:list) { nil }
+    @logger_mock.should_receive(:warn) { |message| warn_text = message }
     
     controller = StartState.default
     assert_nothing_raised { controller.enter }
@@ -56,15 +59,15 @@ class ControllerTest < IngestionCase
     reset_called = false
     addmessage_args = []
 
-    @model_mock.mock_handle(:list, 1) { list_called = true; [] }
-    @model_mock.mock_handle(:reset_list!, 1) { reset_called = true }
+    @model_mock.should_receive(:list, 1) { list_called = true; [] }
+    @model_mock.should_receive(:reset_list!, 1) { reset_called = true }
 
-    @status_mock.mock_handle(:message=)
+    @status_mock.should_receive(:message=)
 
     @root_window_mock = FlexMock.new
 
-    @context_mock.mock_handle(:parent, 1) { @root_window_mock }
-    @context_mock.mock_handle(:addmessage, 1) {|component, message,key| addmessage_args = [component, message, key]}
+    @context_mock.should_receive(:parent, 1) { @root_window_mock }
+    @context_mock.should_receive(:addmessage, 1) {|component, message,key| addmessage_args = [component, message, key]}
 
     controller = StartState.default
     assert_nothing_raised { controller.enter }
@@ -75,11 +78,11 @@ class ControllerTest < IngestionCase
 
   def test_start_state_find_albums
     list_called = false
-    @model_mock.mock_handle(:list) { list_called = true; [] }
+    @model_mock.should_receive(:list) { list_called = true; [] }
     reset_called = false
-    @model_mock.mock_handle(:reset_list!) { reset_called = true }
-    @status_mock.mock_handle(:message=)
-    @control_mock.mock_handle(:prompt_with_callback, 1)
+    @model_mock.should_receive(:reset_list!) { reset_called = true }
+    @status_mock.should_receive(:message=)
+    @control_mock.should_receive(:prompt_with_callback, 1)
 
     controller = StartState.default
     assert_nothing_raised { controller.enter }
@@ -102,17 +105,17 @@ class ControllerTest < IngestionCase
     # Test code
     controller = StartState.default
     
-    @model_mock.mock_handle(:list, 1) { list_called = true; [] }
-    @model_mock.mock_handle(:reset_list!, 1) { reset_called = true }
-    @model_mock.mock_handle(:selected=, 1) { |selected| album = selected }
+    @model_mock.should_receive(:list, 1) { list_called = true; [] }
+    @model_mock.should_receive(:reset_list!, 1) { reset_called = true }
+    @model_mock.should_receive(:selected=, 1) { |selected| album = selected }
     assert_nothing_raised { controller.enter }
     
-    @status_mock.mock_handle(:message=, 1) { |message| status_message = message}
-    album_mock.mock_handle(:artist_name, 1) { 'AR' }
-    album_mock.mock_handle(:reconstituted_name, 1) { 'AL' }
-    album_loader_mock.mock_handle(:choose_most_recent, 1) { album_mock }
-    @context_mock.mock_handle(:album_loader, 1) { album_loader_mock }
-    @context_mock.mock_handle(:change_state, 1) { |state| target_state = state }
+    @status_mock.should_receive(:message=, 1) { |message| status_message = message}
+    album_mock.should_receive(:artist_name, 1) { 'AR' }
+    album_mock.should_receive(:reconstituted_name, 1) { 'AL' }
+    album_loader_mock.should_receive(:choose_most_recent, 1) { album_mock }
+    @context_mock.should_receive(:album_loader, 1) { album_loader_mock }
+    @context_mock.should_receive(:change_state, 1) { |state| target_state = state }
     controller.dispatch('m')
     
     assert_equal album_mock, album
