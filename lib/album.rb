@@ -8,7 +8,7 @@ class Album
   attr_accessor :musicbrainz_album_id, :musicbrainz_album_name, :musicbrainz_album_status, :musicbrainz_album_type, :musicbrainz_album_release_country
   attr_accessor :musicbrainz_album_artist_id, :musicbrainz_album_artist_name, :musicbrainz_album_artist_type, :musicbrainz_album_artist_sort_order
   attr_accessor :non_media_files
-  attr_accessor :cached_album
+  attr_accessor :cached_album, :original_album
   
   def initialize
     @discs = []
@@ -71,34 +71,36 @@ class Album
   # all the encoder fields for my GRIP-encoded tracks into the encoder field
   # from the comments field, where I stashed them.
   def set_encoder_from_comments!
-    start_comment = @discs.compact.first.tracks.first.comment
-    if start_comment.is_a? Array
-      start_comment = start_comment.uniq.join(' / ')
-    end
-
-    if start_comment != nil && start_comment != ''
-      consistent = true
-      
-      @discs.compact.each do |disc|
-        disc.tracks.each do |track|
-          if track.comment != start_comment
-            consistent = false
-            break
-          end
-        end
+    if @discs.compact.size > 1 || @discs.compact.first.tracks.size > 1
+      start_comment = @discs.compact.first.tracks.first.comment
+      if start_comment.is_a? Array
+        start_comment = start_comment.uniq.join(' / ')
       end
+
+      if start_comment != nil && start_comment != ''
+        consistent = true
       
-      encoder_list = start_comment.split(' / ').compact.select {|encoder| !(encoder =~ /^\s*$/)}
-      if consistent && encoder_list && encoder_list.size > 0
         @discs.compact.each do |disc|
           disc.tracks.each do |track|
-            track.comment = nil
-            if track.encoder.nil?
-              track.encoder = []
+            if track.comment != start_comment
+              consistent = false
+              break
             end
-            encoder_list.each do |element|
-              next if element =~ /engiTunNORM/
-              track.encoder << element
+          end
+        end
+      
+        encoder_list = start_comment.split(' / ').compact.select {|encoder| !(encoder =~ /^\s*$/)}
+        if consistent && encoder_list && encoder_list.size > 0
+          @discs.compact.each do |disc|
+            disc.tracks.each do |track|
+              track.comment = nil
+              if track.encoder.nil?
+                track.encoder = []
+              end
+              encoder_list.each do |element|
+                next if element =~ /engiTunNORM/
+                track.encoder << element
+              end
             end
           end
         end
@@ -129,13 +131,13 @@ class Album
   def set_sort_order!
     unless @sort_order && '' != @sort_order
       if match_data = @name.match(/\A(The|A|An) (.+)\Z/)
-        @sort_order = ('' << match_data[2] << ', ' << match_data[1])
+        @sort_order = "#{match_data[2]}, #{match_data[1]}"
       end
     end
     
     unless @artist_sort_order && '' != @artist_sort_order
       if match_data = @artist_name.match(/\A(The|A|An) (.+)\Z/)
-        @artist_sort_order = (match_data[2] << ', ' << match_data[1])
+        @artist_sort_order = "#{match_data[2]}, #{match_data[1]}"
       end
     end
   end
@@ -158,7 +160,7 @@ class Album
   # square brackets
   def set_version_name!
     if patterns = @name.match(/^(.*) \[(.*)\](.*)$/)
-      @name = patterns[1] << patterns[3]
+      @name = "#{patterns[1]}#{patterns[3]}"
       @version_name = patterns[2]
     end
   end
@@ -174,17 +176,17 @@ class Album
   def reconstituted_name
     reconstituted = ''
     reconstituted << (@name || '<untitled>')
-    reconstituted << ': ' << @subtitle if @subtitle
-    reconstituted << ' (mixed by ' << @mixer << ')' if @mixer
-    reconstituted << ' [' << @version_name << ']' if @version_name
+    reconstituted << ": #{@subtitle}" if @subtitle
+    reconstituted << " (mixed by #{@mixer})" if @mixer
+    reconstituted << " [#{@version_name}]" if @version_name
     
     reconstituted
   end
 
   def display_name
-    formatted_album = "#{artist_name}: #{reconstituted_name}"
-    formatted_album << " (#{genre})" if genre && '' != genre
-    formatted_album << " [#{release_date}]" if release_date && '' != release_date
+    formatted_album = "#{@artist_name}: #{reconstituted_name}"
+    formatted_album << " (#{@genre})" if @genre && '' != @genre
+    formatted_album << " [#{@release_date}]" if @release_date && '' != @release_date
     formatted_album
   end
 

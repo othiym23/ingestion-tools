@@ -19,52 +19,52 @@ class Track
   
   def set_remix!
     if patterns = @name.match(/^(.*) \[(.*)\](.*)$/)
-      @name = patterns[1] << patterns[3]
+      @name = "#{patterns[1]}#{patterns[3]}"
       @remix = patterns[2]
     end
 
     if patterns = @name.match(/^(.*) \((.*[Rr]emix)\)(.*)$/)
-      @name = patterns[1] << patterns[3]
+      @name = "#{patterns[1]}#{patterns[3]}"
       @remix = patterns[2]
     end
 
     if patterns = @name.match(/^(.*) \((.* [Mm]ix)\)(.*)$/)
-      @name = patterns[1] << patterns[3]
+      @name = "#{patterns[1]}#{patterns[3]}"
       @remix = patterns[2]
     end
 
     if patterns = @name.match(/^(.*) \((.*[Ee]dit)\)(.*)$/)
-      @name = patterns[1] << patterns[3]
+      @name = "#{patterns[1]}#{patterns[3]}"
       @remix = patterns[2]
     end
 
     if patterns = @name.match(/^(.*) \((.*[Dd]emo)\)(.*)$/)
-      @name = patterns[1] << patterns[3]
+      @name = "#{patterns[1]}#{patterns[3]}"
       @remix = patterns[2]
     end
 
     if patterns = @name.match(/^(.*) \((.*[Vv]ersion)\)(.*)$/)
-      @name = patterns[1] << patterns[3]
+      @name = "#{patterns[1]}#{patterns[3]}"
       @remix = patterns[2]
     end
 
     if patterns = @name.match(/^(.*) \((.*[Ll]ive)\)(.*)$/)
-      @name = patterns[1] << patterns[3]
+      @name = "#{patterns[1]}#{patterns[3]}"
       @remix = patterns[2]
     end
 
     if patterns = @name.match(/^(.*) \((.*[Ii]nstrumental)\)(.*)$/)
-      @name = patterns[1] << patterns[3]
+      @name = "#{patterns[1]}#{patterns[3]}"
       @remix = patterns[2]
     end
 
     if patterns = @name.match(/^(.*) \((.*[Vv]ocal)\)(.*)$/)
-      @name = patterns[1] << patterns[3]
+      @name = "#{patterns[1]}#{patterns[3]}"
       @remix = patterns[2]
     end
 
     if patterns = @name.match(/^(.*) \((.*[Oo]riginal)\)(.*)$/)
-      @name = patterns[1] << patterns[3]
+      @name = "#{patterns[1]}#{patterns[3]}"
       @remix = patterns[2]
     end
   end
@@ -72,13 +72,13 @@ class Track
   def set_sort_order!
     unless @sort_order && '' != @sort_order
       if match_data = @name.match(/\A(The|A|An) (.+)\Z/)
-        @sort_order = (match_data[2] << ', ' << match_data[1])
+        @sort_order = "#{match_data[2]}, #{match_data[1]}"
       end
     end
 
     unless @artist_sort_order && '' != @artist_sort_order
       if match_data = @artist_name.match(/\A(The|A|An) (.+)\Z/)
-        @artist_sort_order = (match_data[2] << ', ' << match_data[1])
+        @artist_sort_order = "#{match_data[2]}, #{match_data[1]}"
       end
     end
   end
@@ -130,24 +130,28 @@ class Track
   
   def canonicalize_encoders!
     encoder_version_string = "::AOAIOXXYSZ:: encoding services, v1"
-     if @encoder
-       encoder_list = @encoder.compact.uniq.flatten
-       
-       encoder_list.collect! do |encoder|
-         if 'Exact Audio Copy   (Secure mode)' == encoder
-           'Exact Audio Copy (secure mode)'
-         else
-           encoder
-         end
-       end
-       
-       if 1 == encoder_list.size && 'Exact Audio Copy (secure mode)' == encoder_list.first
-         encoder_list << 'lame 3.96.1 --alt-preset standard'
-       end
-       
-       encoder_list << encoder_version_string unless encoder_list.detect { |name| name == encoder_version_string }
-       
-       @encoder = encoder_list
+    if @encoder
+      encoder_list = @encoder.compact.uniq.flatten
+      
+      encoder_list.collect! do |encoder|
+        if 'Exact Audio Copy   (Secure mode)' == encoder
+          'Exact Audio Copy (secure mode)'
+        elsif 'Exact Audio Copy   (Burst mode)' == encoder
+          'Exact Audio Copy (burst mode)'
+        elsif 'LAME 3.97 -V1 --vbr-new --noreplaygain --nohist' == encoder
+          'lame 3.97 -V1'
+        else
+          encoder
+        end
+      end
+      
+      if 1 == encoder_list.size && 'Exact Audio Copy (secure mode)' == encoder_list.first
+        encoder_list << 'lame 3.97 -V1'
+      end
+      
+      encoder_list << encoder_version_string unless encoder_list.detect { |name| name == encoder_version_string }
+      
+      @encoder = encoder_list
     end
   end
   
@@ -158,7 +162,7 @@ class Track
   # Track Name (feat. Featured Artist) [Named remix]
   def reconstituted_name
     reconstituted = ''
-    reconstituted << @name
+    reconstituted << (@name || '-')
     reconstituted << reconstituted_featured_artists if reconstituted_featured_artists
     reconstituted << " [#{remix}]" if remix && remix != ''
     
@@ -234,12 +238,15 @@ class Track
     out << "#{artist_name} - " if (disc && disc.album && (artist_name != disc.album.artist_name)) || !omit
     
     unless simple
-      out << "#{name}\n"
+      out << (name || '-')
+      out << " [img]" if image
     else
-      out << reconstituted_name << "\n"
+      out << reconstituted_name
     end
     
-    formatted_track << out
+    out << " [mb]" if musicbrainz_attributes(omit, false).size > 0
+    
+    formatted_track << out << "\n"
     
     unless simple
       comments = format_comments
@@ -254,7 +261,6 @@ class Track
       track_attributes << ["Release date", release_date.to_s || "''"] if (release_date &&
                                                                      disc && disc.album && release_date != disc.album.release_date) || !omit
       track_attributes << ["Featured", featured_artists.join(', ')] if featured_artists && featured_artists.size > 0 || !omit
-      track_attributes << ["Image", (image ? [image].flatten.first.to_s_pretty : "''")] if image || !omit
       track_attributes << ["Comments", comments || "''"] if (comments && comments != '') || !omit
       track_attributes += musicbrainz_attributes(omit)
 
@@ -279,32 +285,61 @@ class Track
     out << reconstituted_name << "\n"
     
     formatted_track << out
-    formatted_track << StringUtils.justify_attribute_list(musicbrainz_attributes(false))
+    formatted_track << StringUtils.justify_attribute_list(musicbrainz_attributes(false, false))
   end
   
   private
   
-  def musicbrainz_attributes(omit = false)
+  def musicbrainz_attributes(omit = false, simple = true)
     attributes = []
     
-    attributes << ["Musicbrainz name", musicbrainz_name || "''"] if (musicbrainz_name &&
-                                                                     musicbrainz_name != name) || !omit
-    attributes << ["Musicbrainz UUID", unique_id || "''"] if (unique_id && unique_id != '') || !omit
-    attributes << ["Musicbrainz length", musicbrainz_duration || "''"] if (musicbrainz_duration && musicbrainz_duration != '') || !omit
-    attributes << ["Musicbrainz artist name", musicbrainz_artist_name || "''"] if (musicbrainz_artist_name &&
-                                                                                   musicbrainz_artist_name != artist_name) || !omit
-    attributes << ["Musicbrainz artist sort", musicbrainz_artist_sort_order || "''"] if (musicbrainz_artist_sort_order &&
-                                                                                         musicbrainz_artist_sort_order != ''
-                                                                                         artist_sort_order &&
-                                                                                         musicbrainz_artist_sort_order != artist_sort_order) || !omit
-    attributes << ["Musicbrainz artist UUID", musicbrainz_artist_id || "''"] if (musicbrainz_artist_id && 
-                                                                                 musicbrainz_artist_id != '' &&
-                                                                                 disc && disc.album && musicbrainz_artist_id != disc.album.musicbrainz_album_artist_id) || !omit
-    attributes << ["Musicbrainz artist type", musicbrainz_artist_type || "''"] if (musicbrainz_artist_type &&
-                                                                                   musicbrainz_artist_type != ''
-                                                                                   musicbrainz_artist_name &&
-                                                                                   musicbrainz_artist_name != artist_name) || !omit
-
+    if (musicbrainz_name && 
+        musicbrainz_name != name) ||
+       !omit
+      attributes << ["Musicbrainz name", musicbrainz_name || "''"]
+    end
+    
+    if ((unique_id && unique_id != '') && !simple) ||
+       !omit
+      attributes << ["Musicbrainz UUID", unique_id || "''"]
+    end
+    
+    if ((musicbrainz_duration && musicbrainz_duration != '') && !simple) || 
+       !omit
+      attributes << ["Musicbrainz length", musicbrainz_duration || "''"]
+    end
+    
+    if (musicbrainz_artist_name &&
+        musicbrainz_artist_name != artist_name) || 
+       !omit
+      attributes << ["Musicbrainz artist name", musicbrainz_artist_name || "''"]
+    end
+    
+    if (musicbrainz_artist_sort_order &&
+        musicbrainz_artist_sort_order != '' &&
+        artist_sort_order &&
+        musicbrainz_artist_sort_order != artist_sort_order) ||
+       !omit
+      attributes << ["Musicbrainz artist sort", musicbrainz_artist_sort_order || "''"]
+    end
+    
+    if ((musicbrainz_artist_id && 
+        musicbrainz_artist_id != '' &&
+        disc &&
+        disc.album &&
+        musicbrainz_artist_id != disc.album.musicbrainz_album_artist_id) && !simple) ||
+       !omit
+      attributes << ["Musicbrainz artist UUID", musicbrainz_artist_id || "''"]
+    end
+    
+    if ((musicbrainz_artist_type &&
+         musicbrainz_artist_type != ''
+         musicbrainz_artist_name &&
+         musicbrainz_artist_name != artist_name) && !simple) ||
+       !omit
+      attributes << ["Musicbrainz artist type", musicbrainz_artist_type || "''"]
+    end
+    
     attributes
   end
   
