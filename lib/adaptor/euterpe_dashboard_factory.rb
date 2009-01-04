@@ -80,9 +80,14 @@ class TrackDao
     
     if !preexisting_path ||
         track_record.file_changed?
-      
-      load_from_model(track_record, disc_record, track)
-      track_record.save or raise IOError.new("Unable to cache track with path #{track_record.media_path}")
+
+      begin
+        load_from_model(track_record, disc_record, track)
+        track_record.save!
+      rescue ActiveRecord::RecordInvalid => err
+        puts track_record.to_yaml
+        raise err
+      end
       
       track_record
     else
@@ -158,8 +163,8 @@ class TrackDao
   
   def self.load_from_model(track_record, disc_record, track)
     track_record.disc = disc_record
-    track_record.name = track.name || ''
-    track_record.artist_name = track.artist_name || ''
+    track_record.name = track.name || 'untitled'
+    track_record.artist_name = track.artist_name || '<unknown>'
     track_record.sequence = track.sequence || ''
     track_record.genre = GenreDao.find_genre(track)
     track_record.comment = track.comment || ''
