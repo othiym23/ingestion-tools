@@ -23,9 +23,9 @@ class TrackWriteTest < Test::Unit::TestCase
     
     begin
       assert PathUtils.safe_copy(source_file, staging_file)
-    
+      
       track_dao = TrackDao.new(staging_file)
-    
+      
       assert TrackDao.archive_mp3_from_track_dao(@processed_root, track_dao)
       assert File.exists?(processed_file),
              "'#{processed_file}' should exist as a canonicalized location."
