@@ -1,10 +1,13 @@
 require File.expand_path(File.join(File.dirname(__FILE__), '../../../../rails/netjuke-tlg/config/boot'))
 
-require 'base'
-require 'artist'
-require 'genre'
-require 'album'
-require 'track'
+module Netjuke
+end
+
+require 'netjuke/base'
+require 'netjuke/artist'
+require 'netjuke/genre'
+require 'netjuke/album'
+require 'netjuke/track'
 
 class Netjuke::GenreDao
   def self.find_related_genres(raw_genre)
