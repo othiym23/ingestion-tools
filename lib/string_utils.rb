@@ -114,7 +114,7 @@ module StringUtils
     out = ''
     max_width = offset + list.max{|l,r| l[0].length <=> r[0].length}[0].length if list.size > 0
     list.each do |attribute|
-      out << (' ' * (max_width - attribute[0].length)) << attribute[0] << ': ' << attribute[1] << "\n"
+      out << "#{' ' * (max_width - attribute[0].length)}#{attribute[0]}: #{attribute[1]}\n"
     end
     out
   end
