@@ -90,12 +90,12 @@ class TrackDao
   # create a hash based on munged values for the artist name from the
   # path and the album name, whatever it may be
   def album_bucket
-    (@path.artist_name.upcase << '|' << album_name.upcase).gsub(' ', '')
+    "#{@path.artist_name.upcase}|#{album_name.upcase}".gsub(' ', '')
   end
   
   def compilation?
     if !@id3.compilation.nil? && @id3.compilation != ''
-      @id3.compilation
+      true
     else
       @path.compilation?
     end
@@ -155,7 +155,7 @@ class TrackDao
 
     id3.max_sequence = dao.number_of_tracks_on_disc
     
-    id3.compilation = dao.compilation?
+    id3.compilation = false if dao.compilation?
 
     id3.musicbrainz_album_id = dao.musicbrainz_album_id
     id3.musicbrainz_album_type = dao.musicbrainz_album_type

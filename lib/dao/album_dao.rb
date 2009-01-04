@@ -90,7 +90,7 @@ class AlbumDao
         disc.tracks.each do |track|
           artists << track.artist_name
           genres << track.genre
-          years << track.release_date
+          years << track.release_date.to_s
           musicbrainz_artist_ids << track.musicbrainz_artist_id
           images << track.image
           directories << File.dirname(track.path)
@@ -135,14 +135,14 @@ class AlbumDao
       if 1 == years.compact.uniq.size
         album.release_date = years.compact.first
       else
-        album.release_date = years.compact.uniq.sort.last
+        album.release_date = years.compact.sort.last
       end
       
       # HEURISTIC: promote track-level MusicBrainz artist to album level
       if 1 == musicbrainz_artist_ids.compact.uniq.size &&
         (!album.musicbrainz_album_artist_id.nil?
          '' != album.musicbrainz_album_artist_id)
-        album.musicbrainz_album_artist_id = musicbrainz_artist_ids.compact.uniq.first
+        album.musicbrainz_album_artist_id = musicbrainz_artist_ids.compact.first
       end
       
       # HEURISTIC: albums coming out of most rippers are only set to have 1 disc
@@ -226,7 +226,7 @@ class AlbumDao
         album_directories << File.dirname(TrackDao.archive_mp3_from_track(@archive_root, track))
       end
       
-      non_mp3_dest_folder = album_directories.compact.uniq.sort.first
+      non_mp3_dest_folder = album_directories.compact.sort.first
       
       album.non_media_files.each do |non_media_file_path|
         moved_files << non_media_file_path
