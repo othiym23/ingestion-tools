@@ -54,7 +54,7 @@ class TrackMetadataTest < IngestionCase
   end
   
   def test_diacritic_in_canonical_full_path
-    id3 = TrackId3Metadata.new
+    id3 = TrackId3Metadata.new("sample_path/")
     id3.album_artist_name = "Björk"
     id3.artist_name = "Björk"
     id3.album_name = "Médulla Piñata"
