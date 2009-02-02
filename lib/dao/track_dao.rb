@@ -143,7 +143,7 @@ class TrackDao
   private
   
   def self.populate_id3_metadata_from_dao(dao)
-    id3 = TrackId3Metadata.new
+    id3 = TrackId3Metadata.new(dao.track.path)
     
     track = dao.track
     
