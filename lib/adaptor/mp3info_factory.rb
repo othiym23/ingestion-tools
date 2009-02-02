@@ -403,27 +403,27 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
   end
   
   def track_name
-    @tag.TT2
+    @tag['TT2']
   end
   
   def track_name=(value)
-    @tag.TT2 = value
+    @tag['TT2'] = value
   end
   
   def remix_name
-    @tag.TT3
+    @tag['TT3']
   end
   
   def remix_name=(value)
-    @tag.TT3 = value
+    @tag['TT3'] = value
   end
   
   def album_name
-    @tag.TAL
+    @tag['TAL']
   end
   
   def album_name=(value)
-    @tag.TAL = value
+    @tag['TAL'] = value
   end
   
   def album_subtitle
@@ -443,11 +443,11 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
   end
 
   def artist_name
-    @tag.TP1
+    @tag['TP1']
   end
   
   def artist_name=(value)
-    @tag.TP1 = value
+    @tag['TP1'] = value
   end
   
   def featured_artists
@@ -459,35 +459,35 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
   end
 
   def remixer
-    @tag.TP4
+    @tag['TP4']
   end
   
   def remixer=(value)
-    @tag.TP4 = value
+    @tag['TP4'] = value
   end
   
   def disc_set
-    @tag.TPA
+    @tag['TPA']
   end
   
   def disc_set=(value)
-    @tag.TPA = value
+    @tag['TPA'] = value
   end
   
   def sequence_info
-    @tag.TRK
+    @tag['TRK']
   end
   
   def sequence_info=(value)
-    @tag.TRK
+    @tag['TRK']
   end
   
   def genre
-    @tag.TCO
+    @tag['TCO']
   end
   
   def genre=(value)
-    @tag.TCO = value
+    @tag['TCO'] = value
   end
   
   def compilation?
@@ -499,74 +499,74 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
   end
   
   def release_date
-    @tag.TYE
+    @tag['TYE']
   end
   
   def release_date=(value)
-    @tag.TYE = value
+    @tag['TYE'] = value
   end
   
   def comment
-    @tag.COM
+    @tag['COM']
   end
   
   def comment=(value)
-    @tag.COM
+    @tag['COM']
   end
   
   def encoder
-    @tag.TEN
+    @tag['TEN']
   end
   
   def encoder=(value)
-    @tag.TEN = value
+    @tag['TEN'] = value
   end
   
   def unique_id
-    @tag.UFI
+    @tag['UFI']
   end
   
   def user_text
-    @tag.TXX
+    @tag['TXX']
   end
   
   def musicbrainz_track_id
-    if @tag.UFI && 'http://musicbrainz.org' == @tag.UFI.namespace
-      @tag.UFI
+    if @tag['UFI'] && 'http://musicbrainz.org' == @tag['UFI'].namespace
+      @tag['UFI']
     else
       nil
     end
   end
   
   def musicbrainz_track_id=(value)
-    @tag.UFI = value
-    @tag.UFI.namespace = 'http://musicbrainz.org'
+    @tag['UFI'] = value
+    @tag['UFI'].namespace = 'http://musicbrainz.org'
   end
 
   def artist_sort_order
-    @tag.XSP
+    @tag['XSP']
   end
   
   def artist_sort_order=(value)
-    @tag.XSP = value
+    @tag['XSP'] = value
   end
   
   def album_image
-    @tag.PIC
+    @tag['PIC']
   end
   
   def album_image=(value)
-    @tag.PIC = value
+    @tag['PIC'] = value
   end
   
   protected
   
   def musicbrainz_getter(property_name)
-    if @tag.TXX
-      if @tag.TXX.is_a? Array
-        @tag.TXX.select { |frame| property_name == frame.description }
+    if @tag['TXX']
+      if @tag['TXX'].is_a? Array
+        @tag['TXX'].select { |frame| property_name == frame.description }
       else
-        @tag.TXX if property_name == @tag.TXX.description
+        @tag['TXX'] if property_name == @tag['TXX'].description
       end
     end
   end
@@ -575,11 +575,11 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
     txx = ID3v2Frame.create_frame('TXX', value)
     txx.description = property_name
 
-    if @tag.TXX
-      if @tag.TXX.is_a? Array
-        @tag.TXX << txxx
+    if @tag['TXX']
+      if @tag['TXX'].is_a? Array
+        @tag['TXX'] << txxx
       else
-        @tag.TXX = [@tag.TXX, txx]
+        @tag['TXX'] = [@tag['TXX'], txx]
       end
     end
   end
@@ -587,7 +587,7 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
   def user_defined_list(content_description)
     returned = []
 
-    user_frames = @tag.TXX
+    user_frames = @tag['TXX']
     if user_frames
       if user_frames.is_a?(Array)
         user_frames.each do |candidate|
@@ -614,28 +614,28 @@ class Mp3InfoId3v22Tag < Mp3InfoFactory
         user_frame = ID3V24::Frame.create_frame('TXX', element)
         user_frame.description = content_description
 
-        if @tag.TXX
-          if @tag.TXX.is_a? Array
-            @tag.TXX << user_frame
+        if @tag['TXX']
+          if @tag['TXX'].is_a? Array
+            @tag['TXX'] << user_frame
           else
-            @tag.TXX = [@tag.TXX, user_frame]
+            @tag['TXX'] = [@tag['TXX'], user_frame]
           end
         else
-          @tag.TXX = user_frame
+          @tag['TXX'] = user_frame
         end
       end
     else
       user_frame = ID3V24::Frame.create_frame('TXX', value)
       user_frame.description = content_description
 
-      if @tag.TXX
-        if @tag.TXX.is_a? Array
-          @tag.TXX << user_frame
+      if @tag['TXX']
+        if @tag['TXX'].is_a? Array
+          @tag['TXX'] << user_frame
         else
-          @tag.TXX = [@tag.TXX, user_frame]
+          @tag['TXX'] = [@tag['TXX'], user_frame]
         end
       else
-        @tag.TXX = user_frame
+        @tag['TXX'] = user_frame
       end
     end
   end
