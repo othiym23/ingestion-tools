@@ -82,27 +82,27 @@ class Mp3InfoId3v23Tag < Mp3InfoFactory
   end
   
   def track_name
-    @tag.TIT2
+    @tag['TIT2']
   end
   
   def track_name=(value)
-    @tag.TIT2 = value
+    @tag['TIT2'] = value
   end
   
   def remix_name
-    @tag.TIT3
+    @tag['TIT3']
   end
   
   def remix_name=(value)
-    @tag.TIT3 = value
+    @tag['TIT3'] = value
   end
   
   def album_name
-    @tag.TALB
+    @tag['TALB']
   end
   
   def album_name=(value)
-    @tag.TALB = value
+    @tag['TALB'] = value
   end
   
   def album_subtitle
@@ -122,11 +122,11 @@ class Mp3InfoId3v23Tag < Mp3InfoFactory
   end
 
   def artist_name
-    @tag.TPE1
+    @tag['TPE1']
   end
   
   def artist_name=(value)
-    @tag.TPE1 = value
+    @tag['TPE1'] = value
   end
   
   def featured_artists
@@ -138,112 +138,112 @@ class Mp3InfoId3v23Tag < Mp3InfoFactory
   end
 
   def remixer
-    @tag.TPE4
+    @tag['TPE4']
   end
   
   def remixer=(value)
-    @tag.TPE4 = value
+    @tag['TPE4'] = value
   end
   
   def disc_set
-    @tag.TPOS
+    @tag['TPOS']
   end
   
   def disc_set=(value)
-    @tag.TPOS = value
+    @tag['TPOS'] = value
   end
   
   def sequence_info
-    @tag.TRCK
+    @tag['TRCK']
   end
   
   def sequence_info=(value)
-    @tag.TRCK = value
+    @tag['TRCK'] = value
   end
   
   def genre
-    @tag.TCON
+    @tag['TCON']
   end
   
   def genre=(value)
-    @tag.TCON = value
+    @tag['TCON'] = value
   end
   
   def compilation?
-    @tag.TCMP
+    @tag['TCMP']
   end
   
   def compilation=(value)
-    @tag.TCMP = value
+    @tag['TCMP'] = value
   end
   
   def release_date
-    @tag.TDRC || @tag.TYER
+    @tag['TDRC'] || @tag['TYER']
   end
   
   def release_date=(value)
-    @tag.TYER = value
+    @tag['TYER'] = value
   end
   
   def comment
-    @tag.COMM
+    @tag['COMM']
   end
   
   def comment=(value)
-    @tag.COMM = value
-    @tag.COMM.description = ''
+    @tag['COMM'] = value
+    @tag['COMM'].description = ''
   end
   
   def encoder
-    @tag.TSSE || @tag.TENC
+    @tag['TSSE'] || @tag['TENC']
   end
   
   def encoder=(value)
-    @tag.TENC = "::AOIOXXYSZ:: encoding tools, v1"
-    @tag.TSSE = value
+    @tag['TENC'] = "::AOIOXXYSZ:: encoding tools, v1"
+    @tag['TSSE'] = value
   end
   
   def user_text
-    @tag.TXXX
+    @tag['TXXX']
   end
   
   def musicbrainz_track_id
-    if @tag.UFID && 'http://musicbrainz.org' == @tag.UFID.namespace
-      @tag.UFID
+    if @tag['UFID'] && 'http://musicbrainz.org' == @tag['UFID'].namespace
+      @tag['UFID']
     else
       nil
     end
   end
   
   def musicbrainz_track_id=(value)
-    @tag.UFID = value
-    @tag.UFID.namespace = 'http://musicbrainz.org'
+    @tag['UFID'] = value
+    @tag['UFID'].namespace = 'http://musicbrainz.org'
   end
 
   def artist_sort_order
-    @tag.XSOP
+    @tag['XSOP']
   end
   
   def artist_sort_order=(value)
-    @tag.XSOP = value
+    @tag['XSOP'] = value
   end
   
   def album_image
-    @tag.APIC
+    @tag['APIC']
   end
   
   def album_image=(value)
-    @tag.APIC = value
+    @tag['APIC'] = value
   end
   
   protected
   
   def musicbrainz_getter(property_name)
-    if @tag.TXXX
-      if @tag.TXXX.is_a? Array
-        @tag.TXXX.select { |frame| property_name == frame.description }
+    if @tag['TXXX']
+      if @tag['TXXX'].is_a? Array
+        @tag['TXXX'].select { |frame| property_name == frame.description }
       else
-        @tag.TXXX if property_name == @tag.TXXX.description
+        @tag['TXXX'] if property_name == @tag['TXXX'].description
       end
     end
   end
@@ -253,21 +253,21 @@ class Mp3InfoId3v23Tag < Mp3InfoFactory
     txxx.encoding = 0 # ISO-8859-1, as per http://musicbrainz.org/docs/specs/metadata_tags.html
     txxx.description = property_name
 
-    if @tag.TXXX
-      if @tag.TXXX.is_a? Array
-        @tag.TXXX << txxx
+    if @tag['TXXX']
+      if @tag['TXXX'].is_a? Array
+        @tag['TXXX'] << txxx
       else
-        @tag.TXXX = [@tag.TXXX, txxx]
+        @tag['TXXX'] = [@tag['TXXX'], txxx]
       end
     else
-      @tag.TXXX = txxx
+      @tag['TXXX'] = txxx
     end
   end
   
   def user_defined_list(content_description)
     returned = []
 
-    user_frames = @tag.TXXX
+    user_frames = @tag['TXXX']
     if user_frames
       if user_frames.is_a?(Array)
         user_frames.each do |candidate|
@@ -294,28 +294,28 @@ class Mp3InfoId3v23Tag < Mp3InfoFactory
         user_frame = ID3V24::Frame.create_frame('TXXX', element)
         user_frame.description = content_description
 
-        if @tag.TXXX
-          if @tag.TXXX.is_a? Array
-            @tag.TXXX << user_frame
+        if @tag['TXXX']
+          if @tag['TXXX'].is_a? Array
+            @tag['TXXX'] << user_frame
           else
-            @tag.TXXX = [@tag.TXXX, user_frame]
+            @tag['TXXX'] = [@tag['TXXX'], user_frame]
           end
         else
-          @tag.TXXX = user_frame
+          @tag['TXXX'] = user_frame
         end
       end
     else
       user_frame = ID3V24::Frame.create_frame('TXXX', value)
       user_frame.description = content_description
 
-      if @tag.TXXX
-        if @tag.TXXX.is_a? Array
-          @tag.TXXX << user_frame
+      if @tag['TXXX']
+        if @tag['TXXX'].is_a? Array
+          @tag['TXXX'] << user_frame
         else
-          @tag.TXXX = [@tag.TXXX, user_frame]
+          @tag['TXXX'] = [@tag['TXXX'], user_frame]
         end
       else
-        @tag.TXXX = user_frame
+        @tag['TXXX'] = user_frame
       end
     end
   end
@@ -323,45 +323,45 @@ end
 
 class Mp3InfoId3v24Tag < Mp3InfoId3v23Tag
   def album_artist_name
-    @tag.TPE2
+    @tag['TPE2']
   end
   
   def album_artist_name=(value)
-    @tag.TPE2 = value
+    @tag['TPE2'] = value
   end
 
   def album_sort_order
-    @tag.TSOA
+    @tag['TSOA']
   end
   
   def album_sort_order=(value)
-    @tag.TSOA = value
+    @tag['TSOA'] = value
   end
   
   def artist_sort_order
-    @tag.TSOP
+    @tag['TSOP']
   end
   
   def artist_sort_order=(value)
-    @tag.TSOP = value
+    @tag['TSOP'] = value
   end
   
   def track_sort_order
-    @tag.TSOT
+    @tag['TSOT']
   end
   
   def track_sort_order=(value)
-    @tag.TSOT = value
+    @tag['TSOT'] = value
   end
   
   def release_date=(value)
-    @tag.TDRC = value
+    @tag['TDRC'] = value
   end
   
   def featured_artists
     featured = []
   
-    involved_people = @tag.TIPL
+    involved_people = @tag['TIPL']
     if involved_people
       if involved_people.is_a?(Array)
         while true
@@ -393,7 +393,7 @@ class Mp3InfoId3v24Tag < Mp3InfoId3v23Tag
       performer_list << 'Featured Performer'
       performer_list << value
     end
-    @tag.TIPL = performer_list if performer_list.size > 0
+    @tag['TIPL'] = performer_list if performer_list.size > 0
   end
 end
 
