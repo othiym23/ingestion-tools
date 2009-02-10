@@ -143,8 +143,8 @@ class TrackId3Metadata < TrackMetadata
     
     Mp3Info.open(full_path) do |mp3info_dao|
       # Just in case, try prepopulating with ID3v1 data if it's available
-      if mp3info_dao.hastag1?
-        id3v1 = mp3info_dao.tag1
+      if mp3info_dao.has_id3v1_tag?
+        id3v1 = mp3info_dao.id3v1_tag
         id3.track_name = id3v1['title']
         id3.album_name = id3v1['album']
         id3.artist_name = id3v1['artist']
@@ -154,8 +154,8 @@ class TrackId3Metadata < TrackMetadata
         id3.comment = id3v1['comments']
       end
       
-      if mp3info_dao.hastag2?
-        id3v2 = Mp3InfoFactory.adaptor(mp3info_dao.tag2)
+      if mp3info_dao.has_id3v2_tag?
+        id3v2 = Mp3InfoFactory.adaptor(mp3info_dao.id3v2_tag)
 
         id3.track_name = reconcile_value(id3v2.track_name)
         id3.remix_name = reconcile_value(id3v2.remix_name)
@@ -247,11 +247,11 @@ class TrackId3Metadata < TrackMetadata
   end
   
   def save
-    Mp3Info.removetag1(full_path)
-    Mp3Info.removetag2(full_path)
+    Mp3Info.remove_id3v1_tag(full_path)
+    Mp3Info.remove_id3v2_tag(full_path)
 
     Mp3Info.open(full_path) do |mp3|
-      id3v2 = Mp3InfoFactory.adaptor(mp3.tag2)
+      id3v2 = Mp3InfoFactory.adaptor(mp3.id3v2_tag)
 
       id3v2.track_name = track_name if track_name && '' != track_name
       id3v2.remix_name = remix_name if remix_name && '' != remix_name
