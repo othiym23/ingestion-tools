@@ -8,5 +8,10 @@ require 'yaml'
 require 'mp3info'
 
 ARGV.each do |path|
-  puts YAML.dump(Mp3Info.new(File.expand_path(path)).tag2)
+  mp3 = Mp3Info.new(File.expand_path(path))
+  puts YAML.dump(mp3.id3v2_tag) if mp3.has_id3v2_tag?
+  puts "\n#{mp3.mpeg_header.to_s}" if mp3.has_mpeg_header?
+  puts mp3.xing_header.to_s if mp3.has_xing_header?
+  puts mp3.lame_header.to_s if mp3.has_lame_header?
+  puts "\n#{mp3.replaygain_info.to_s}" 
 end
