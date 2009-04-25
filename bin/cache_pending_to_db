@@ -71,7 +71,7 @@ def archive_summary_statistics(archive_location = '/data')
 
   ingested_mp3s = open("|du -sk #{archive_location}/music/mp3").read.split("\t")[0].to_i * 1.kibibyte
   pending_mp3s = open("|du -sk #{archive_location}/music/holding/pending").read.split("\t")[0].to_i * 1.kibibyte
-  total_mp3s = open("|du -sk #{archive_location}/music").read.split("\t")[0].to_i * 1.kibibyte
+  total_mp3s = ingested_mp3s + pending_mp3s
 
   header_string = <<-HEADER
   #{total_mp3s.octet_units} of music in the archive: #{ingested_mp3s.octet_units} processed, #{pending_mp3s.octet_units} pending.
