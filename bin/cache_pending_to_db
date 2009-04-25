@@ -226,7 +226,7 @@ def all_pending_summary
 end
 
 def find_artist_directories(archive_base)
-  Dir.glob(File.join(archive_base, '*'))
+  Dir.glob(File.join(archive_base, '*')).reject { |dir| dir.match(/\.AppleDouble/) }
 end
 
 def find_new_media_files(directory)
