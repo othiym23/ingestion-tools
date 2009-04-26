@@ -131,7 +131,10 @@ class TrackDao
       track_record.media_path.file_updated_on = File.stat(model_track.path).mtime
     else
       track_record = Euterpe::Dashboard::Track.find_by_media_path_id(path.id)
-      raise IOError.new("Unable to locate track record for preexisting path [#{path.path}]") unless track_record
+      unless track_record
+        track_record = Euterpe::Dashboard::Track.new
+        track_record.media_path = path
+      end
     end
     
     track_record
